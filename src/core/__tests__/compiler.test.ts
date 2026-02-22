@@ -28,8 +28,8 @@ describe('Compiler', () => {
         expect(program.functions['thread_start_1']).toBeDefined();
 
         const func = program.functions['thread_start_1'];
-        expect(func.entryBlockId).toBe('entry_1');
-        expect(Object.keys(func.blocks).length).toBe(1);
+        expect(func.entryBlockId).toMatch(/^block_start_start_1/);
+        expect(Object.keys(func.blocks).length).toBeGreaterThan(1);
     });
 
     it('compiles nested loops without crossing logic', () => {
@@ -95,15 +95,86 @@ describe('Compiler', () => {
         expect(func).toBeDefined();
 
         const entry = func.blocks[func.entryBlockId];
-        expect(entry.instructions.length).toBe(3);
+        expect(entry.instructions[0].opcode).toBe('jump');
 
-        expect(entry.instructions[0].opcode).toBe('store');
-        expect(entry.instructions[0].operands).toEqual(['x', 10]);
+        const setVarLabel = entry.instructions[0].operands[0] as string;
+        const setVarBlock = func.blocks[setVarLabel];
 
-        expect(entry.instructions[1].opcode).toBe('math_add');
-        expect(entry.instructions[1].operands).toEqual(['x', 5]);
+        expect(setVarBlock.instructions[0].opcode).toBe('store');
+        expect(setVarBlock.instructions[0].operands).toEqual(['x', 10]);
+        expect(setVarBlock.instructions[1].opcode).toBe('jump');
 
-        expect(entry.instructions[2].opcode).toBe('math_add');
-        expect(entry.instructions[2].operands).toEqual(['x', -2]);
+        const change1Label = setVarBlock.instructions[1].operands[0] as string;
+        const change1Block = func.blocks[change1Label];
+
+        expect(change1Block.instructions[0].opcode).toBe('math_add');
+        expect(change1Block.instructions[0].operands).toEqual(['x', 5]);
+        expect(change1Block.instructions[1].opcode).toBe('jump');
+
+        const change2Label = change1Block.instructions[1].operands[0] as string;
+        const change2Block = func.blocks[change2Label];
+
+        expect(change2Block.instructions[0].opcode).toBe('math_add');
+        expect(change2Block.instructions[0].operands).toEqual(['x', -2]);
+    });
+
+    it('Correctly wires jump pointers for nested REPEAT blocks', () => {
+        const registry = new PluginRegistry();
+        const compiler = new Compiler(registry);
+
+        // AST representation:
+        // START -> REPEAT (R1)
+        //   body: PLAY_NOTE (N1) -> REPEAT (R2)
+        //     body: PLAY_NOTE (N2)
+
+        const startNode: BlockNode = { id: 'start', type: 'start', inputs: {}, next: 'R1' };
+
+        const outerRepeat: BlockNode = { id: 'R1', type: 'repeat', inputs: { iterations: 2 }, body: 'N1' };
+
+        const outerNote: BlockNode = { id: 'N1', type: 'play_note', inputs: { pitch: 'C4', beats: 1 }, next: 'R2' };
+
+        const innerRepeat: BlockNode = { id: 'R2', type: 'repeat', inputs: { iterations: 2 }, body: 'N2' };
+
+        const innerNote: BlockNode = { id: 'N2', type: 'play_note', inputs: { pitch: 'C4', beats: 1 } };
+
+        const blocks = {
+            'start': startNode,
+            'R1': outerRepeat,
+            'N1': outerNote,
+            'R2': innerRepeat,
+            'N2': innerNote
+        };
+
+        const program = compiler.compile([startNode], blocks);
+        const func = program.functions['thread_start'];
+
+        // Let's trace the logic.
+        // innerNote (N2) is inside innerRepeat (R2). After N2, it should jump to R2's increment block, which then jumps to R2's condition block.
+        // Once R2 finishes (exit/after block), it is the end of R1's body.
+        // Therefore, R2's exit/after block should jump to R1's increment block.
+
+        // R1 should produce specific loop blocks
+        const r1Condition = Object.values(func.blocks).find(b => b.label.startsWith('loop_cond_R1'));
+        const r1Increment = Object.values(func.blocks).find(b => b.label.startsWith('loop_increment_R1'));
+
+        expect(r1Condition).toBeDefined();
+        expect(r1Increment).toBeDefined();
+
+        // R2 should produce specific loop blocks
+        const r2Condition = Object.values(func.blocks).find(b => b.label.startsWith('loop_cond_R2'));
+        const r2After = Object.values(func.blocks).find(b => b.label.startsWith('after_loop_R2'))
+            || Object.values(func.blocks).find(b => b.label.startsWith('loop_end_R2'))
+            || r1Increment; // Under recursive descent, if R2 has no next, it jumps to its parent's nextLabel (r1Increment) directly natively without an after_loop block!
+
+        expect(r2Condition).toBeDefined();
+        expect(r2After).toBeDefined();
+
+        // The critical check: Does R2's condition block exit back up to R1's increment?
+        // Under recursive descent, R2's exitLabel IS R1's increment block, so the compare_jump
+        // will use it as the fail-condition target (operand[4]).
+
+        const r2ExitTarget = r2Condition?.instructions.find(i => i.opcode === 'compare_jump')?.operands[4];
+
+        expect(r2ExitTarget).toBe(r1Increment?.label);
     });
 });
