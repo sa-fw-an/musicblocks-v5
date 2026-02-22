@@ -171,10 +171,42 @@ function App() {
       <header style={{ padding: '1rem', backgroundColor: '#343a40', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <h1 style={{ margin: 0, fontSize: '1.2rem' }}>Music Blocks Refined - Zustand + DnD</h1>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => {
+              useWorkspaceStore.getState().saveProject();
+              alert('Project Saved!');
+            }}
+            style={{ padding: '6px 12px', backgroundColor: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            💾 Save
+          </button>
+          <button
+            onClick={() => {
+              const data = localStorage.getItem('musicblocks-save');
+              if (data) {
+                useWorkspaceStore.getState().loadProject(data);
+              } else {
+                alert('No save found.');
+              }
+            }}
+            style={{ padding: '6px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            📂 Load
+          </button>
+          <button
+            onClick={() => {
+              if (confirm('Clear entire workspace?')) {
+                useWorkspaceStore.getState().clearWorkspace();
+              }
+            }}
+            style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
+          >
+            🗑️ Clear All
+          </button>
           <button
             onClick={handlePlay}
-            style={{ padding: '8px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+            style={{ padding: '6px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '1rem' }}
           >
             ▶️ Run Headless Test
           </button>

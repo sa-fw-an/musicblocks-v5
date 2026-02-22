@@ -10,6 +10,9 @@ interface WorkspaceState {
     connectBlocks: (parentId: BlockId, childId: BlockId, connectionType?: 'next' | 'body') => void;
     moveBlock: (id: BlockId, x: number, y: number) => void;
     updateBlockInput: (id: BlockId, key: string, value: any) => void;
+    saveProject: () => void;
+    loadProject: (projectData: string) => void;
+    clearWorkspace: () => void;
 }
 
 // Initial state representing our C4 -> D4 -> E4 program, but normalized
@@ -20,7 +23,7 @@ const initialBlocks: Record<BlockId, BlockNode> = {
     'b4': { id: 'b4', type: 'play_note', inputs: { pitch: 'E4', beats: 2 } }
 };
 
-export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     blocks: initialBlocks,
     // For now, only the 'start' block is a root block sitting on the canvas
     rootBlocks: ['b1'],
@@ -204,4 +207,40 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
                 }
             };
         }),
+
+    saveProject: () => {
+        const state = get();
+        const data = {
+            blocks: state.blocks,
+            rootBlocks: state.rootBlocks
+        };
+        try {
+            const serialized = JSON.stringify(data);
+            localStorage.setItem('musicblocks-save', serialized);
+        } catch (e) {
+            console.error("Failed to save project", e);
+        }
+    },
+
+    loadProject: (projectData: string) =>
+        set((state) => {
+            try {
+                const parsed = JSON.parse(projectData);
+                if (parsed && typeof parsed === 'object' && parsed.blocks && Array.isArray(parsed.rootBlocks)) {
+                    return {
+                        blocks: parsed.blocks,
+                        rootBlocks: parsed.rootBlocks
+                    };
+                }
+            } catch (e) {
+                console.error("Failed to parse project data", e);
+            }
+            return state;
+        }),
+
+    clearWorkspace: () =>
+        set(() => ({
+            blocks: {},
+            rootBlocks: []
+        })),
 }));
