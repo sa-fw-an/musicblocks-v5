@@ -97,4 +97,55 @@ describe('Domain-Agnostic VM Architecture', () => {
         expect(events[1].pitch).toBe('E4');
         expect(events[1].time).toBe(600);
     });
+
+    it('executes dynamic variables and math operations correctly', () => {
+        const registry = new PluginRegistry();
+        const compiler = new Compiler(registry);
+
+        const startNode: BlockNode = {
+            id: 'start_2',
+            type: 'start',
+            inputs: {},
+            next: 'set_1'
+        };
+
+        const setNode: BlockNode = {
+            id: 'set_1',
+            type: 'set_var',
+            inputs: { varName: 'myBeats', value: 1 },
+            next: 'change_1'
+        };
+
+        const changeNode: BlockNode = {
+            id: 'change_1',
+            type: 'change_var',
+            inputs: { varName: 'myBeats', amount: 2 }
+        };
+
+        const blocks = {
+            'start_2': startNode,
+            'set_1': setNode,
+            'change_1': changeNode
+        };
+
+        const program = compiler.compile([startNode], blocks);
+        const interpreter = new Interpreter(program, registry);
+        const scheduler = new Scheduler(interpreter);
+
+        let capturedContext: any;
+        const originalExecuteSlice = interpreter.executeSlice.bind(interpreter);
+        // @ts-ignore
+        interpreter.executeSlice = (threadId, funcName, context, sliceSize, currentTimeMs) => {
+            capturedContext = context;
+            return originalExecuteSlice(threadId, funcName, context, sliceSize, currentTimeMs);
+        };
+
+        const entryBlockId = program.functions['thread_start_2'].entryBlockId;
+        scheduler.scheduleThread('thread_test', 'thread_start_2', entryBlockId);
+
+        scheduler.pulse(100);
+
+        // Verify the symbol table memory
+        expect(capturedContext.memory.query('myBeats')).toBe(3);
+    });
 });

@@ -57,6 +57,12 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
     } else if (node.type === 'repeat') {
         backgroundColor = '#fff3cd';
         borderColor = '#ffeeba';
+    } else if (node.type === 'set_var') {
+        backgroundColor = '#f8d7da';
+        borderColor = '#f5c6cb';
+    } else if (node.type === 'change_var') {
+        backgroundColor = '#e2e3e5';
+        borderColor = '#d6d8db';
     }
 
     // Calculate position styles
@@ -132,13 +138,69 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
                                 <div style={{ marginBottom: '4px' }}>
                                     <strong>beats:</strong>
                                     <input
-                                        type="number"
-                                        step="0.5"
-                                        min="0.5"
+                                        type="text"
                                         value={node.inputs.beats}
-                                        onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'beats', Number(e.target.value))}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const isNum = !isNaN(Number(val)) && val !== '';
+                                            useWorkspaceStore.getState().updateBlockInput(node.id, 'beats', isNum ? Number(val) : val);
+                                        }}
                                         onPointerDown={(e) => e.stopPropagation()}
-                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '60px' }}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '80px' }}
+                                    />
+                                </div>
+                            </>
+                        ) : node.type === 'set_var' ? (
+                            <>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>varName:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.varName}
+                                        onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'varName', e.target.value)}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '80px' }}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>value:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.value}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const isNum = !isNaN(Number(val)) && val !== '';
+                                            useWorkspaceStore.getState().updateBlockInput(node.id, 'value', isNum ? Number(val) : val);
+                                        }}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '80px' }}
+                                    />
+                                </div>
+                            </>
+                        ) : node.type === 'change_var' ? (
+                            <>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>varName:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.varName}
+                                        onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'varName', e.target.value)}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '80px' }}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>amount:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.amount}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const isNum = !isNaN(Number(val)) && val !== '';
+                                            useWorkspaceStore.getState().updateBlockInput(node.id, 'amount', isNum ? Number(val) : val);
+                                        }}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '80px' }}
                                     />
                                 </div>
                             </>

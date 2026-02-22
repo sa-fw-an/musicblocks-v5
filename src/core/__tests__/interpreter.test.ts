@@ -78,4 +78,63 @@ describe('Interpreter', () => {
         interpreter.executeSlice('t1', 'main', ctx, 10, 0);
         expect(ctx.currentBlockId).toBe('true_block');
     });
+
+    it('resolves dynamic operands starting with $', () => {
+        const mockRegistry = new PluginRegistry();
+        const program: IRProgram = {
+            functions: {
+                'main': {
+                    name: 'main',
+                    entryBlockId: 'b1',
+                    blocks: {
+                        'b1': {
+                            label: 'b1',
+                            instructions: [
+                                { opcode: 'sym_declare', operands: ['x', 10] },
+                                { opcode: 'store', operands: ['y', '$x'] },
+                                { opcode: 'store', operands: ['z', '$undef'] }
+                            ]
+                        }
+                    }
+                }
+            }
+        };
+
+        const interpreter = new Interpreter(program, mockRegistry);
+        const ctx = new ExecutionContext('t1', 'b1');
+
+        interpreter.executeSlice('t1', 'main', ctx, 10, 0);
+        expect(ctx.memory.query('y')).toBe(10);
+        expect(ctx.memory.query('z')).toBe(0); // Defaults to 0 when undefined
+    });
+
+    it('handles the new math_add opcode with 2 operands', () => {
+        const mockRegistry = new PluginRegistry();
+        const program: IRProgram = {
+            functions: {
+                'main': {
+                    name: 'main',
+                    entryBlockId: 'b1',
+                    blocks: {
+                        'b1': {
+                            label: 'b1',
+                            instructions: [
+                                { opcode: 'sym_declare', operands: ['x', 10] },
+                                { opcode: 'math_add', operands: ['x', 5] },
+                                { opcode: 'math_add', operands: ['y', 5] }, // y is undefined, defaults to 0 + 5 = 5
+                                { opcode: 'math_add', operands: ['x', '$y'] } // x becomes 15 + 5 = 20
+                            ]
+                        }
+                    }
+                }
+            }
+        };
+
+        const interpreter = new Interpreter(program, mockRegistry);
+        const ctx = new ExecutionContext('t1', 'b1');
+
+        interpreter.executeSlice('t1', 'main', ctx, 10, 0);
+        expect(ctx.memory.query('x')).toBe(20);
+        expect(ctx.memory.query('y')).toBe(5);
+    });
 });

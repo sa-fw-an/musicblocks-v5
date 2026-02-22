@@ -1,4 +1,4 @@
-export type IROpcode = 'sym_declare' | 'sym_assign' | 'sym_query' | 'compare_jump' | 'jump' | 'sys_call' | 'yield' | 'math_add';
+export type IROpcode = 'sym_declare' | 'sym_assign' | 'sym_query' | 'compare_jump' | 'jump' | 'sys_call' | 'yield' | 'math_add' | 'store';
 
 export interface IRInstruction {
     opcode: IROpcode;

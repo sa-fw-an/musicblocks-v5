@@ -22,6 +22,15 @@ export class Interpreter {
         this.breakpoints = breakpoints;
     }
 
+    private resolveOperand(operand: any, context: ExecutionContext): any {
+        if (typeof operand === 'string' && operand.startsWith('$')) {
+            const varName = operand.slice(1);
+            const val = context.memory.query(varName);
+            return val !== undefined ? val : 0;
+        }
+        return operand;
+    }
+
     executeSlice(_threadId: string, funcName: string, context: ExecutionContext, sliceSize: number, currentTimeMs: number): ExecutionStatus {
         const func = this.program.functions[funcName];
         if (!func) return { status: 'THREAD_HALTED' };
@@ -58,17 +67,28 @@ export class Interpreter {
                 context.currentAstNodeId = inst.astNodeId;
             }
 
+            const resolvedOperands = inst.operands.map(op => this.resolveOperand(op, context));
+
             switch (inst.opcode) {
                 case 'sym_declare':
-                    context.memory.declare(inst.operands[0], inst.operands[1]);
+                    context.memory.declare(inst.operands[0], resolvedOperands[1]);
                     break;
                 case 'sym_assign':
-                    context.memory.assign(inst.operands[0], inst.operands[1]);
+                case 'store':
+                    context.memory.assign(inst.operands[0], resolvedOperands[1]);
                     break;
                 case 'math_add': {
-                    const [resVar, leftVar, rightNum] = inst.operands;
-                    const val = context.memory.query(leftVar);
-                    context.memory.assign(resVar, val + rightNum);
+                    if (inst.operands.length === 3) {
+                        // legacy 3 operands: [resVar, leftVar, rightNum]
+                        const [resVar, leftVar] = inst.operands;
+                        const val = context.memory.query(leftVar) || 0;
+                        context.memory.assign(resVar, val + resolvedOperands[2]);
+                    } else {
+                        // new 2 operands: [varName, amountToAdd]
+                        const varName = inst.operands[0];
+                        const current = context.memory.query(varName) || 0;
+                        context.memory.assign(varName, current + resolvedOperands[1]);
+                    }
                     break;
                 }
                 case 'jump':
@@ -90,7 +110,7 @@ export class Interpreter {
                 }
                 case 'sys_call': {
                     const syscallName = inst.operands[0];
-                    const args = inst.operands.slice(1).map(arg => {
+                    const args = resolvedOperands.slice(1).map(arg => {
                         if (typeof arg === 'string' && arg.startsWith('_')) {
                             const varName = arg.slice(1);
                             return context.memory.query(varName);

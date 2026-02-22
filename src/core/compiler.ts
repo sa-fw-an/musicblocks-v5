@@ -108,6 +108,18 @@ export class Compiler {
                         current = undefined;
                     }
                     continue;
+                } else if (current.type === 'set_var') {
+                    currentBlock.instructions.push({
+                        opcode: 'store',
+                        operands: [current.inputs.varName, current.inputs.value],
+                        astNodeId: current.id
+                    });
+                } else if (current.type === 'change_var') {
+                    currentBlock.instructions.push({
+                        opcode: 'math_add',
+                        operands: [current.inputs.varName, current.inputs.amount],
+                        astNodeId: current.id
+                    });
                 } else {
                     const customCompiler = this.registry.getBlockCompiler(current.type);
                     if (customCompiler) {
