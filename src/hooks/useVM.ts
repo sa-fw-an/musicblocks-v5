@@ -71,6 +71,17 @@ export function useVM() {
 
             if (schedulerRef.current) {
                 schedulerRef.current.pulse(deltaTimeMs);
+
+                // Track active blocks and avoid React re-renders unless changed
+                const newActiveIds = schedulerRef.current.getActiveNodeIds();
+                const currentActiveIds = useWorkspaceStore.getState().activeBlockIds;
+
+                const changed = newActiveIds.length !== currentActiveIds.length ||
+                    newActiveIds.some((id, i) => id !== currentActiveIds[i]);
+
+                if (changed) {
+                    useWorkspaceStore.getState().setActiveBlockIds(newActiveIds);
+                }
             }
 
             animationFrameRef.current = requestAnimationFrame(loop);
@@ -85,6 +96,9 @@ export function useVM() {
             animationFrameRef.current = null;
         }
         schedulerRef.current = null;
+
+        // Clear Highlights
+        useWorkspaceStore.getState().setActiveBlockIds([]);
 
         // Stop Tone.js transport/synths if needed, though they trigger linearly
         import('tone').then(() => {

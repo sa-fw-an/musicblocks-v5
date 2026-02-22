@@ -40,6 +40,7 @@ export class ExecutionContext {
     public memory: SymbolTable;
     public instructionPointer: number = 0;
     public currentBlockId: string;
+    public currentAstNodeId?: string;
 
     constructor(threadId: string, entryBlockId: string) {
         this.threadId = threadId;

@@ -3,6 +3,7 @@ export type IROpcode = 'sym_declare' | 'sym_assign' | 'sym_query' | 'compare_jum
 export interface IRInstruction {
     opcode: IROpcode;
     operands: any[];
+    astNodeId?: string;
 }
 
 export interface IRBasicBlock {

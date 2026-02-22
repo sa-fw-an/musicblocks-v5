@@ -34,6 +34,10 @@ export class Interpreter {
             context.instructionPointer++;
             cycles++;
 
+            if (inst.astNodeId) {
+                context.currentAstNodeId = inst.astNodeId;
+            }
+
             switch (inst.opcode) {
                 case 'sym_declare':
                     context.memory.declare(inst.operands[0], inst.operands[1]);

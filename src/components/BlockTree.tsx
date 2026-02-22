@@ -16,6 +16,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
     }
 
     const node = useWorkspaceStore(state => state.blocks[id]);
+    const isActive = useWorkspaceStore(state => state.activeBlockIds.includes(id));
 
     // Set up dnd-kit draggable hook
     const dragData = useDraggable({
@@ -80,7 +81,8 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
                     borderRadius: node.type === 'repeat' ? '8px 8px 8px 0' : '8px',
                     display: 'inline-block',
                     minWidth: '200px',
-                    boxShadow: isRoot ? '0 4px 6px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
+                    boxShadow: isActive ? '0 0 0 4px #fbbf24' : (isRoot ? '0 4px 6px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.05)'),
+                    transition: 'box-shadow 0.1s',
                     cursor: !isOverlay ? 'grab' : 'default',
                     // Visual feedback for drop zone
                     borderBottomWidth: node.type === 'repeat' ? '1px' : (isOver ? '6px' : '2px'),

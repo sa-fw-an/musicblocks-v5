@@ -76,12 +76,13 @@ export class Compiler {
                     irFunc.blocks[bodyBlock.label] = bodyBlock;
                     irFunc.blocks[endBlock.label] = endBlock;
 
-                    currentBlock.instructions.push({ opcode: 'sym_declare', operands: [iterVar, 0] });
-                    currentBlock.instructions.push({ opcode: 'jump', operands: [conditionBlock.label] });
+                    currentBlock.instructions.push({ opcode: 'sym_declare', operands: [iterVar, 0], astNodeId: current.id });
+                    currentBlock.instructions.push({ opcode: 'jump', operands: [conditionBlock.label], astNodeId: current.id });
 
                     conditionBlock.instructions.push({
                         opcode: 'compare_jump',
-                        operands: ['<', iterVar, iterations, bodyBlock.label, endBlock.label]
+                        operands: ['<', iterVar, iterations, bodyBlock.label, endBlock.label],
+                        astNodeId: current.id
                     });
 
                     currentBlock = bodyBlock;
@@ -97,7 +98,7 @@ export class Compiler {
 
                     const incrementBlock = bbm.createBlock('loop_increment');
                     irFunc.blocks[incrementBlock.label] = incrementBlock;
-                    incrementBlock.instructions.push({ opcode: 'math_add', operands: [iterVar, iterVar, 1] });
+                    incrementBlock.instructions.push({ opcode: 'math_add', operands: [iterVar, iterVar, 1], astNodeId: current.id });
                     stack.push({ node: undefined, returnToBlock: conditionBlock });
                     stack.push({ node: undefined, returnToBlock: incrementBlock });
 

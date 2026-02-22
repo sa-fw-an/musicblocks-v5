@@ -1,9 +1,11 @@
 import { create } from 'zustand';
-import type { BlockNode, BlockId } from '@/engine/ast';
+import type { BlockNode, BlockId } from '@/core/ast';
 
 interface WorkspaceState {
     blocks: Record<BlockId, BlockNode>; // Flat dictionary of all blocks by ID
     rootBlocks: BlockId[]; // Array of IDs for blocks sitting freely on the canvas
+    activeBlockIds: string[]; // Node IDs currently executing in the VM
+
     addBlock: (block: BlockNode) => void;
     deleteBlock: (id: BlockId) => void;
     detachBlock: (id: BlockId) => void;
@@ -13,6 +15,7 @@ interface WorkspaceState {
     saveProject: () => void;
     loadProject: (projectData: string) => void;
     clearWorkspace: () => void;
+    setActiveBlockIds: (ids: string[]) => void;
 }
 
 // Initial state representing our C4 -> D4 -> E4 program, but normalized
@@ -27,6 +30,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     blocks: initialBlocks,
     // For now, only the 'start' block is a root block sitting on the canvas
     rootBlocks: ['b1'],
+    activeBlockIds: [],
+
+    setActiveBlockIds: (ids: string[]) => set({ activeBlockIds: ids }),
 
     addBlock: (block: BlockNode) =>
         set((state) => ({
@@ -229,7 +235,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
                 if (parsed && typeof parsed === 'object' && parsed.blocks && Array.isArray(parsed.rootBlocks)) {
                     return {
                         blocks: parsed.blocks,
-                        rootBlocks: parsed.rootBlocks
+                        rootBlocks: parsed.rootBlocks,
+                        activeBlockIds: []
                     };
                 }
             } catch (e) {
@@ -241,6 +248,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     clearWorkspace: () =>
         set(() => ({
             blocks: {},
-            rootBlocks: []
+            rootBlocks: [],
+            activeBlockIds: []
         })),
 }));

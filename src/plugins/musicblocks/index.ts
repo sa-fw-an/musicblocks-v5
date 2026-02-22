@@ -11,7 +11,8 @@ export const MusicBlocksPlugin: CorePlugin = {
             const duration = node.inputs.beats || 1;
             instructions.push({
                 opcode: 'sys_call',
-                operands: ['playNote', pitch, duration]
+                operands: ['playNote', pitch, duration],
+                astNodeId: node.id
             });
         }
     },

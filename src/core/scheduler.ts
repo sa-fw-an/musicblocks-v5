@@ -57,6 +57,26 @@ export class Scheduler {
         }
     }
 
+    getActiveNodeIds(): string[] {
+        const activeIds = new Set<string>();
+
+        // Currently executing threads
+        for (const tcb of this.runQueue) {
+            if (tcb.context.currentAstNodeId) {
+                activeIds.add(tcb.context.currentAstNodeId);
+            }
+        }
+
+        // Threads waiting on sys_call duration (e.g., play_note)
+        for (const entry of this.waitQueue) {
+            if (entry.tcb.context.currentAstNodeId) {
+                activeIds.add(entry.tcb.context.currentAstNodeId);
+            }
+        }
+
+        return Array.from(activeIds);
+    }
+
     getCurrentTime() {
         return this.currentTimeMs;
     }
