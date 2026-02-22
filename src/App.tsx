@@ -1,16 +1,11 @@
 import { useState } from 'react';
-import { Compiler } from '@/engine/compiler';
-import { AudioEngine } from '@/engine/audio';
 import { BlockTree } from '@/components/BlockTree';
 import { Palette, PaletteBlock } from '@/components/Palette';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { DndContext, DragOverlay, defaultDropAnimationSideEffects, useDroppable } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-import type { BlockNode } from '@/engine/ast';
-
-// Single instance of engine
-const engine = new AudioEngine();
-const compiler = new Compiler();
+import type { BlockNode } from '@/core/ast';
+import { useVM } from '@/hooks/useVM';
 
 const TrashCan = () => {
   const { isOver, setNodeRef } = useDroppable({
@@ -46,21 +41,14 @@ const TrashCan = () => {
 function App() {
   const { blocks, rootBlocks, moveBlock, addBlock } = useWorkspaceStore();
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { play, stop } = useVM();
 
   const handlePlay = async () => {
-    // Compile all 'start' blocks that exist as independent root sequences
-    const startBlocks = rootBlocks
-      .map(id => blocks[id])
-      .filter(b => b?.type === 'start');
+    await play(rootBlocks);
+  };
 
-    if (startBlocks.length === 0) return;
-
-    // Compile each start block tree into the flat array of events independently 
-    // They will all start at time 0 so they play concurrently
-    const allEvents = startBlocks.flatMap(startNode => compiler.compile(startNode, blocks));
-
-    // Tell the audio engine to schedule and play the events
-    await engine.play(allEvents);
+  const handleStop = () => {
+    stop();
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -240,7 +228,13 @@ function App() {
             onClick={handlePlay}
             style={{ padding: '6px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '1rem' }}
           >
-            ▶️ Run Headless Test
+            ▶️ Play
+          </button>
+          <button
+            onClick={handleStop}
+            style={{ padding: '6px 16px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}
+          >
+            🛑 Stop
           </button>
         </div>
       </header>
