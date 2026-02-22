@@ -17,19 +17,13 @@ export class AudioEngine {
         Tone.Transport.stop();
         Tone.Transport.cancel();
 
-        // Assume 1 beat = 0.5 seconds (120 BPM) for a simple mapping
-        const secondsPerBeat = 0.5;
-
         // Loop through events array and schedule
         for (const event of events) {
-            if (event.type === 'note' && event.pitch && event.duration) {
-                const startTimeInSeconds = event.timeOffset * secondsPerBeat;
-                const durationInSeconds = event.duration * secondsPerBeat;
-
-                // Schedule using Tone.Transport at the absolute time offset
+            if (event.type === 'note' && event.pitch && event.duration !== undefined) {
+                // Schedule using Tone.Transport at the absolute time offset (already in seconds)
                 Tone.Transport.schedule((time) => {
-                    this.synth.triggerAttackRelease(event.pitch!, durationInSeconds, time);
-                }, startTimeInSeconds);
+                    this.synth.triggerAttackRelease(event.pitch!, event.duration!, time);
+                }, event.time);
             }
         }
 

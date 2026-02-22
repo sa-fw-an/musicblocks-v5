@@ -9,9 +9,9 @@ export interface BlockNode {
     type: string;
     // e.g., 'start', 'play_note', 'repeat', 'rest', 'setTempo'
 
-    inputs: Record<string, string | number | BlockNode | BlockNode[] | FractionValue | undefined>;
+    inputs: Record<string, string | number | undefined>;
 
-    next?: BlockNode;
+    next?: BlockId;
 
     // Workspace UI properties
     x?: number;

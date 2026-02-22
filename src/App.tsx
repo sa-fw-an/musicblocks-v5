@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Compiler } from '@/engine/compiler';
 import { AudioEngine } from '@/engine/audio';
 import { BlockTree } from '@/components/BlockTree';
-import { Palette } from '@/components/Palette';
+import { Palette, PaletteBlock } from '@/components/Palette';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { DndContext, DragOverlay, defaultDropAnimationSideEffects } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
@@ -17,19 +17,19 @@ function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const handlePlay = async () => {
-    // For now, assume the first root block is the start of the sequence we want to play
-    if (rootBlocks.length === 0) return;
+    // Compile all 'start' blocks that exist as independent root sequences
+    const startBlocks = rootBlocks
+      .map(id => blocks[id])
+      .filter(b => b?.type === 'start');
 
-    // Find the 'start' block in rootBlocks
-    const startNodeId = rootBlocks.find(id => blocks[id]?.type === 'start');
-    const startNode = startNodeId ? blocks[startNodeId] : null;
+    if (startBlocks.length === 0) return;
 
-    if (!startNode) return;
+    // Compile each start block tree into the flat array of events independently 
+    // They will all start at time 0 so they play concurrently
+    const allEvents = startBlocks.flatMap(startNode => compiler.compile(startNode, blocks));
 
-    // Compile AST into a flat array of events
-    const events = compiler.compile(startNode);
     // Tell the audio engine to schedule and play the events
-    await engine.play(events);
+    await engine.play(allEvents);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -37,7 +37,7 @@ function App() {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, delta } = event;
+    const { active, over, delta } = event;
     const activeIdString = active.id as string;
 
     setActiveId(null);
@@ -52,23 +52,32 @@ function App() {
         id: `b${Date.now()}`, // Unique ID
         type,
         inputs: defaultInputs,
-        // Since we drop on the flex container, the coordinates are relative to the screen. 
-        // For a robust implementation we'd need a real ref to the canvas to calculate bounding rects.
-        // For now, an approximation to prove it works:
-        x: delta.x + 250, // 250px is the palette width
-        y: delta.y
+        // Approximate drop coordinates against the main canvas bounding box by using the translated rect
+        x: active.rect.current.translated ? active.rect.current.translated.left - 250 : delta.x + 250, // 250px is the palette width
+        y: active.rect.current.translated ? active.rect.current.translated.top - 70 : delta.y // 70px approx header height
       };
 
       addBlock(newBlock);
+
+      // Check if dropped over another block to snap it immediately
+      if (over && over.id !== newBlock.id) {
+        useWorkspaceStore.getState().connectBlocks(over.id as string, newBlock.id);
+      }
       return;
     }
 
     // Moving an existing block
     const block = blocks[activeIdString];
     if (block) {
-      const newX = (block.x || 0) + delta.x;
-      const newY = (block.y || 0) + delta.y;
-      moveBlock(activeIdString, newX, newY);
+      if (over && over.id !== activeIdString) {
+        // Snap!
+        useWorkspaceStore.getState().connectBlocks(over.id as string, activeIdString);
+      } else {
+        // Free drop on the canvas
+        const newX = (block.x || 0) + delta.x;
+        const newY = (block.y || 0) + delta.y;
+        moveBlock(activeIdString, newX, newY);
+      }
     }
   };
 
@@ -79,19 +88,13 @@ function App() {
     // If it's a palette template being dragged
     if (activeId.startsWith('palette-')) {
       const type = activeId.replace('palette-', '');
-      // Create a temporary mock node just for visual rendering in the overlay
-      const mockNode: BlockNode = {
-        id: 'overlay-temp',
-        type,
-        inputs: {},
-      };
-      return <BlockTree node={mockNode} isRoot={true} />;
+      return <PaletteBlock type={type} defaultInputs={{}} isOverlay={true} />;
     }
 
     // If it's an existing block being dragged
     const block = blocks[activeId];
     if (block) {
-      return <BlockTree node={block} isRoot={true} />;
+      return <BlockTree id={activeId} isRoot={true} isOverlay={true} />;
     }
 
     return null;
@@ -132,9 +135,8 @@ function App() {
             {/* Render all root blocks sitting on the canvas */}
             {rootBlocks.map((id) => {
               const block = blocks[id];
-              // Don't render the block in its original spot while it's actively being dragged
-              if (!block || activeId === id) return null;
-              return <BlockTree key={id} node={block} isRoot={true} />;
+              if (!block) return null;
+              return <BlockTree key={id} id={id} isRoot={true} />;
             })}
           </main>
 

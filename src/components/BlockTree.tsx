@@ -1,23 +1,31 @@
 import React from 'react';
-import type { BlockNode } from '@/engine/ast';
-import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 
 interface BlockTreeProps {
-    node?: BlockNode;
+    id: string;
     isRoot?: boolean; // Only the absolute root of a chain is draggable on the canvas
+    isOverlay?: boolean;
 }
 
-export const BlockTree: React.FC<BlockTreeProps> = ({ node, isRoot = false }) => {
+export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOverlay = false }) => {
+    const node = useWorkspaceStore(state => state.blocks[id]);
+
     // Set up dnd-kit draggable hook
     const dragData = useDraggable({
-        id: node?.id ?? 'temp',
-        disabled: !isRoot || !node, // Prevent dragging individual sub-blocks for now
+        id: id,
+        disabled: !isRoot || isOverlay, // Prevent dragging individual sub-blocks for now, and don't make overlay draggable
+    });
+
+    const dropData = useDroppable({
+        id: id,
+        disabled: isOverlay,
     });
 
     if (!node) return null;
 
-    const { attributes, listeners, setNodeRef, transform } = dragData;
+    const { attributes, listeners, setNodeRef: setDragNodeRef } = dragData;
+    const { isOver, setNodeRef: setDropNodeRef } = dropData;
 
     // Determine styles based on block type
     let backgroundColor = '#f8f9fa';
@@ -36,27 +44,31 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ node, isRoot = false }) =>
 
     // Calculate position styles
     const style: React.CSSProperties = {
-        marginLeft: isRoot ? 0 : '20px',
-        marginTop: isRoot ? 0 : '10px',
-        position: isRoot ? 'absolute' : 'relative',
-        left: isRoot ? `${node.x ?? 0}px` : undefined,
-        top: isRoot ? `${node.y ?? 0}px` : undefined,
-        transform: transform ? CSS.Translate.toString(transform) : undefined,
-        zIndex: transform ? 999 : 1, // Pop to front while dragging
+        marginLeft: isRoot || isOverlay ? 0 : '20px',
+        marginTop: isRoot || isOverlay ? 0 : '10px',
+        position: isRoot && !isOverlay ? 'absolute' : 'relative',
+        left: isRoot && !isOverlay ? `${node.x ?? 0}px` : undefined,
+        top: isRoot && !isOverlay ? `${node.y ?? 0}px` : undefined,
+        opacity: dragData.isDragging ? 0.3 : 1, // Leave a ghost
+        // We do NOT use transform here because DragOverlay handles the visual clone movement.
+        // Keeping it untransformed ensures DndKit's rect calculations remain stable.
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...(isRoot ? attributes : {})} {...(isRoot ? listeners : {})}>
+        <div ref={setDragNodeRef} style={style} {...(isRoot && !isOverlay ? attributes : {})} {...(isRoot && !isOverlay ? listeners : {})}>
             <div
+                ref={setDropNodeRef}
                 style={{
-                    border: `2px solid ${borderColor}`,
+                    border: `2px solid ${isOver ? '#007bff' : borderColor}`,
                     backgroundColor,
                     padding: '12px 16px',
                     borderRadius: '8px',
                     display: 'inline-block',
                     minWidth: '200px',
                     boxShadow: isRoot ? '0 4px 6px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
-                    cursor: isRoot ? 'grab' : 'default',
+                    cursor: isRoot && !isOverlay ? 'grab' : 'default',
+                    // Visual feedback for drop zone
+                    borderBottomWidth: isOver ? '6px' : '2px',
                 }}
             >
                 <div style={{ fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.9rem', color: '#495057' }}>
@@ -76,7 +88,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ node, isRoot = false }) =>
 
             {node.next && (
                 <div style={{ paddingLeft: '20px', borderLeft: '2px solid #dee2e6', marginLeft: '20px', marginTop: '4px' }}>
-                    <BlockTree node={node.next} isRoot={false} />
+                    <BlockTree id={node.next} isRoot={false} isOverlay={isOverlay} />
                 </div>
             )}
         </div>

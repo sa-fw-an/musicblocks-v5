@@ -1,21 +1,24 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import type { BlockNode } from '@/engine/ast';
 
-interface PaletteBlockProps {
+export interface PaletteBlockProps {
     type: string;
-    defaultInputs: BlockNode['inputs'];
+    defaultInputs: Record<string, string | number | undefined>;
+    isOverlay?: boolean;
 }
 
-const PaletteBlock: React.FC<PaletteBlockProps> = ({ type, defaultInputs }) => {
+export const PaletteBlock: React.FC<PaletteBlockProps> = ({ type, defaultInputs, isOverlay = false }) => {
     // We use a prefix so the drop handler knows this is a template, not a real block
-    const { attributes, listeners, setNodeRef } = useDraggable({
+    const dragData = useDraggable({
         id: `palette-${type}`,
         data: {
             type,
             defaultInputs
-        }
+        },
+        disabled: isOverlay
     });
+
+    const { attributes, listeners, setNodeRef } = dragData;
 
     // Determine styles based on block type
     let backgroundColor = '#f8f9fa';
@@ -34,9 +37,9 @@ const PaletteBlock: React.FC<PaletteBlockProps> = ({ type, defaultInputs }) => {
 
     return (
         <div
-            ref={setNodeRef}
-            {...attributes}
-            {...listeners}
+            ref={isOverlay ? undefined : setNodeRef}
+            {...(isOverlay ? {} : attributes)}
+            {...(isOverlay ? {} : listeners)}
             style={{
                 border: `2px solid ${borderColor}`,
                 backgroundColor,
@@ -44,8 +47,8 @@ const PaletteBlock: React.FC<PaletteBlockProps> = ({ type, defaultInputs }) => {
                 borderRadius: '8px',
                 minWidth: '150px',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                cursor: 'grab',
-                marginBottom: '1rem'
+                cursor: isOverlay ? 'default' : 'grab',
+                marginBottom: isOverlay ? '0' : '1rem'
             }}
         >
             <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.9rem', color: '#495057' }}>
