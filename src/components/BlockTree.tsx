@@ -83,11 +83,41 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
 
                 {Object.keys(node.inputs).length > 0 && (
                     <div style={{ fontSize: '0.9rem', color: '#6c757d' }}>
-                        {Object.entries(node.inputs).map(([key, value]) => (
-                            <div key={key}>
-                                <strong>{key}:</strong> {String(value)}
-                            </div>
-                        ))}
+                        {node.type === 'play_note' ? (
+                            <>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>pitch:</strong>
+                                    <select
+                                        value={node.inputs.pitch}
+                                        onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'pitch', e.target.value)}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', cursor: 'pointer' }}
+                                    >
+                                        {['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'].map(note => (
+                                            <option key={note} value={note}>{note}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>beats:</strong>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        min="0.5"
+                                        value={node.inputs.beats}
+                                        onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'beats', Number(e.target.value))}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '60px' }}
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            Object.entries(node.inputs).map(([key, value]) => (
+                                <div key={key}>
+                                    <strong>{key}:</strong> {String(value)}
+                                </div>
+                            ))
+                        )}
                     </div>
                 )}
             </div>

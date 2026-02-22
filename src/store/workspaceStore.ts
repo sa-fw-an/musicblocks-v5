@@ -8,6 +8,7 @@ interface WorkspaceState {
     detachBlock: (id: BlockId) => void;
     connectBlocks: (parentId: BlockId, childId: BlockId) => void;
     moveBlock: (id: BlockId, x: number, y: number) => void;
+    updateBlockInput: (id: BlockId, key: string, value: any) => void;
 }
 
 // Initial state representing our C4 -> D4 -> E4 program, but normalized
@@ -134,6 +135,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
                     ...state.blocks,
                     [id]: { ...block, x, y },
                 },
+            };
+        }),
+
+    updateBlockInput: (id: BlockId, key: string, value: any) =>
+        set((state) => {
+            const block = state.blocks[id];
+            if (!block) return state;
+
+            return {
+                blocks: {
+                    ...state.blocks,
+                    [id]: {
+                        ...block,
+                        inputs: {
+                            ...block.inputs,
+                            [key]: value
+                        }
+                    }
+                }
             };
         }),
 }));
