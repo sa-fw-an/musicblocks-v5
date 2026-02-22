@@ -9,9 +9,10 @@ export interface BlockNode {
     type: string;
     // e.g., 'start', 'play_note', 'repeat', 'rest', 'setTempo'
 
-    inputs: Record<string, string | number | undefined>;
+    inputs: Record<string, any>;
 
     next?: BlockId;
+    body?: BlockId; // For C-shaped blocks like REPEAT
 
     // Workspace UI properties
     x?: number;

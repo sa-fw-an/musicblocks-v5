@@ -4,13 +4,44 @@ import { AudioEngine } from '@/engine/audio';
 import { BlockTree } from '@/components/BlockTree';
 import { Palette, PaletteBlock } from '@/components/Palette';
 import { useWorkspaceStore } from '@/store/workspaceStore';
-import { DndContext, DragOverlay, defaultDropAnimationSideEffects } from '@dnd-kit/core';
+import { DndContext, DragOverlay, defaultDropAnimationSideEffects, useDroppable } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import type { BlockNode } from '@/engine/ast';
 
 // Single instance of engine
 const engine = new AudioEngine();
 const compiler = new Compiler();
+
+const TrashCan = () => {
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'trash-can',
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        position: 'absolute',
+        bottom: '20px',
+        right: '20px',
+        width: '80px',
+        height: '80px',
+        backgroundColor: isOver ? '#ffcdd2' : '#f8d7da',
+        border: `3px dashed ${isOver ? '#d32f2f' : '#dc3545'}`,
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '32px',
+        boxShadow: isOver ? '0 8px 16px rgba(220,53,69,0.3)' : '0 4px 8px rgba(0,0,0,0.1)',
+        transition: 'all 0.2s',
+        zIndex: 100,
+      }}
+    >
+      🗑️
+    </div>
+  );
+};
 
 function App() {
   const { blocks, rootBlocks, moveBlock, addBlock } = useWorkspaceStore();
@@ -44,6 +75,8 @@ function App() {
 
     // Scenario 1: Dragging from Palette (Spawning new node)
     if (activeIdString.startsWith('palette-')) {
+      if (over && over.id === 'trash-can') return; // Cancel spawn
+
       const type = active.data.current?.type as string;
       const defaultInputs = active.data.current?.defaultInputs || {};
 
@@ -72,15 +105,32 @@ function App() {
 
       if (!block) return;
 
+      // Trash Can Drop
+      if (over && over.id === 'trash-can') {
+        useWorkspaceStore.getState().deleteBlock(rawDragId);
+        return;
+      }
+
       // Snapping to an existing Droppable Node
       if (over && (over.id as string).startsWith('drop-')) {
-        const rawDropId = (over.id as string).replace('drop-', '');
+        const overIdStr = over.id as string;
 
-        // Do not connect to self or descendant path (prevented in store)
-        if (rawDropId !== rawDragId) {
-          useWorkspaceStore.getState().detachBlock(rawDragId);
-          useWorkspaceStore.getState().connectBlocks(rawDropId, rawDragId);
-          return; // done snapping
+        // Dropping into a REPEAT body
+        if (overIdStr.startsWith('drop-body-')) {
+          const rawDropId = overIdStr.replace('drop-body-', '');
+          if (rawDropId !== rawDragId) {
+            useWorkspaceStore.getState().detachBlock(rawDragId);
+            useWorkspaceStore.getState().connectBlocks(rawDropId, rawDragId, 'body');
+            return;
+          }
+        } else {
+          // Standard next dropping
+          const rawDropId = overIdStr.replace('drop-', '');
+          if (rawDropId !== rawDragId) {
+            useWorkspaceStore.getState().detachBlock(rawDragId);
+            useWorkspaceStore.getState().connectBlocks(rawDropId, rawDragId, 'next');
+            return; // done snapping
+          }
         }
       }
 
@@ -154,6 +204,8 @@ function App() {
               if (!block) return null;
               return <BlockTree key={id} id={id} isRoot={true} />;
             })}
+
+            <TrashCan />
           </main>
 
           <DragOverlay dropAnimation={{

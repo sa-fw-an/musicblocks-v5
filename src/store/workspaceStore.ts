@@ -5,8 +5,9 @@ interface WorkspaceState {
     blocks: Record<BlockId, BlockNode>; // Flat dictionary of all blocks by ID
     rootBlocks: BlockId[]; // Array of IDs for blocks sitting freely on the canvas
     addBlock: (block: BlockNode) => void;
+    deleteBlock: (id: BlockId) => void;
     detachBlock: (id: BlockId) => void;
-    connectBlocks: (parentId: BlockId, childId: BlockId) => void;
+    connectBlocks: (parentId: BlockId, childId: BlockId, connectionType?: 'next' | 'body') => void;
     moveBlock: (id: BlockId, x: number, y: number) => void;
     updateBlockInput: (id: BlockId, key: string, value: any) => void;
 }
@@ -43,6 +44,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
                     newBlocks[otherId] = { ...b, next: undefined };
                     break;
                 }
+                if (b.body === id) {
+                    hasParent = true;
+                    newBlocks[otherId] = { ...b, body: undefined };
+                    break;
+                }
             }
 
             // Only make it a root block if it actually detached from something
@@ -60,7 +66,35 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             };
         }),
 
-    connectBlocks: (parentId: BlockId, childId: BlockId) =>
+    deleteBlock: (id: BlockId) =>
+        set((state) => {
+            const newBlocks = { ...state.blocks };
+            const newRootBlocks = state.rootBlocks.filter(rootId => rootId !== id);
+
+            // Recursive deletion helper
+            const deleteRecursively = (blockId: BlockId) => {
+                const block = newBlocks[blockId];
+                if (!block) return;
+
+                if (block.next) {
+                    deleteRecursively(block.next);
+                }
+                if (block.body) {
+                    deleteRecursively(block.body);
+                }
+
+                delete newBlocks[blockId];
+            };
+
+            deleteRecursively(id);
+
+            return {
+                rootBlocks: newRootBlocks,
+                blocks: newBlocks
+            };
+        }),
+
+    connectBlocks: (parentId: BlockId, childId: BlockId, connectionType: 'next' | 'body' = 'next') =>
         set((state) => {
             const parent = state.blocks[parentId];
             const child = state.blocks[childId];
@@ -87,16 +121,29 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
                 return state;
             }
 
+            const currentConnection = connectionType === 'next' ? parent.next : parent.body;
+            if (currentConnection !== undefined) {
+                console.warn(`Cannot snap: block ${parentId} already has a ${connectionType} connection.`);
+                return state; // Abort
+            }
+
             // Remove child from root blocks
             const newRootBlocks = state.rootBlocks.filter(id => id !== childId);
             const newBlocks = { ...state.blocks };
             const oldNextId = parent.next;
 
             // Connect parent directly to dropped child tree
-            newBlocks[parentId] = {
-                ...parent,
-                next: childId
-            };
+            if (connectionType === 'next') {
+                newBlocks[parentId] = {
+                    ...parent,
+                    next: childId
+                };
+            } else {
+                newBlocks[parentId] = {
+                    ...parent,
+                    body: childId
+                };
+            }
 
             // Clear x/y from incoming child so it nests under parent naturally
             newBlocks[childId] = {
@@ -105,8 +152,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
                 y: undefined
             };
 
-            // Splicing: If the parent already had a child, attach it to the tail of the dropped tree
-            if (oldNextId) {
+            // Splicing: If the parent already had a child (in next), attach it to the tail of the dropped tree
+            // We only splice for 'next' connections currently
+            if (connectionType === 'next' && oldNextId) {
                 let tailId = childId;
                 let tail = newBlocks[tailId];
                 while (tail.next && newBlocks[tail.next]) {

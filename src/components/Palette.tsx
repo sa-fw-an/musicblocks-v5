@@ -33,6 +33,9 @@ export const PaletteBlock: React.FC<PaletteBlockProps> = ({ type, defaultInputs,
     } else if (type === 'rest') {
         backgroundColor = '#e2e3e5';
         borderColor = '#d6d8db';
+    } else if (type === 'repeat') {
+        backgroundColor = '#fff3cd';
+        borderColor = '#ffeeba';
     }
 
     return (
@@ -72,6 +75,7 @@ export const Palette: React.FC = () => {
             <PaletteBlock type="start" defaultInputs={{}} />
             <PaletteBlock type="play_note" defaultInputs={{ pitch: 'C4', beats: 1 }} />
             <PaletteBlock type="rest" defaultInputs={{ beats: 1 }} />
+            <PaletteBlock type="repeat" defaultInputs={{ iterations: 2 }} />
 
         </aside>
     );

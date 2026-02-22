@@ -1,4 +1,3 @@
-import * as Tone from 'tone';
 import type { BlockNode, BlockId } from './ast';
 
 export interface AudioEvent {
@@ -10,8 +9,12 @@ export interface AudioEvent {
 
 export class Compiler {
     compile(startNode: BlockNode, blocks: Record<BlockId, BlockNode>): AudioEvent[] {
+        return this._compileInner(startNode, blocks, 0).events;
+    }
+
+    private _compileInner(startNode: BlockNode, blocks: Record<BlockId, BlockNode>, startTime: number): { events: AudioEvent[], endTime: number } {
         const events: AudioEvent[] = [];
-        let currentTime = 0;
+        let currentTime = startTime;
 
         let current: BlockNode | undefined = startNode;
 
@@ -33,12 +36,22 @@ export class Compiler {
             } else if (current.type === 'rest') {
                 const beats = (current.inputs.beats as number) || 1;
                 currentTime += beats * 0.5;
+            } else if (current.type === 'repeat') {
+                const iterations = (current.inputs.iterations as number) || 2;
+                if (current.body && blocks[current.body]) {
+                    const bodyStartNode = blocks[current.body];
+                    for (let i = 0; i < iterations; i++) {
+                        const result = this._compileInner(bodyStartNode, blocks, currentTime);
+                        events.push(...result.events);
+                        currentTime = result.endTime;
+                    }
+                }
             }
 
             // Move to the next block in the chain by looking up its ID in the flat dictionary
             current = current.next ? blocks[current.next] : undefined;
         }
 
-        return events;
+        return { events, endTime: currentTime };
     }
 }
