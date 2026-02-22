@@ -166,28 +166,58 @@ function App() {
     return null;
   };
 
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'sans-serif' }}>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#343a40',
+          color: 'white',
+          padding: '12px 24px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 9999,
+          fontWeight: 'bold',
+          animation: 'fadeInOut 3s forwards'
+        }}>
+          {toastMessage}
+        </div>
+      )}
+
       <header style={{ padding: '1rem', backgroundColor: '#343a40', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
         <h1 style={{ margin: 0, fontSize: '1.2rem' }}>Music Blocks Refined - Zustand + DnD</h1>
 
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               useWorkspaceStore.getState().saveProject();
-              alert('Project Saved!');
+              showToast('💾 Project Saved Successfully!');
             }}
             style={{ padding: '6px 12px', backgroundColor: '#0d6efd', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
           >
             💾 Save
           </button>
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
               const data = localStorage.getItem('musicblocks-save');
               if (data) {
                 useWorkspaceStore.getState().loadProject(data);
+                showToast('📂 Project Loaded!');
               } else {
-                alert('No save found.');
+                showToast('⚠️ No save file found.');
               }
             }}
             style={{ padding: '6px 12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
@@ -195,10 +225,12 @@ function App() {
             📂 Load
           </button>
           <button
-            onClick={() => {
-              if (confirm('Clear entire workspace?')) {
-                useWorkspaceStore.getState().clearWorkspace();
-              }
+            onClick={(e) => {
+              e.preventDefault();
+              // Replace confirm with immediate clear for this polished version, 
+              // or rely on the user visually seeing it clear.
+              useWorkspaceStore.getState().clearWorkspace();
+              showToast('🗑️ Workspace Cleared');
             }}
             style={{ padding: '6px 12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
           >
