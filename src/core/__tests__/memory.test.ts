@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SymbolTable, ExecutionContext } from '../memory';
+import { SymbolTable, ExecutionContext } from '@/core/memory';
 
 describe('Memory Hierarchy', () => {
     describe('SymbolTable', () => {

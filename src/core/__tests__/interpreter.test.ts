@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Interpreter } from '../interpreter';
-import { ExecutionContext } from '../memory';
-import { PluginRegistry } from '../plugin-registry';
-import type { IRProgram } from '../ir';
+import { Interpreter } from '@/core/interpreter';
+import { ExecutionContext } from '@/core/memory';
+import { PluginRegistry } from '@/core/plugin-registry';
+import type { IRProgram } from '@/core/ir';
 
 describe('Interpreter', () => {
     it('executes basic IR blocks incrementally', () => {
@@ -136,5 +136,80 @@ describe('Interpreter', () => {
         interpreter.executeSlice('t1', 'main', ctx, 10, 0);
         expect(ctx.memory.query('x')).toBe(20);
         expect(ctx.memory.query('y')).toBe(5);
+    });
+
+    it('math_add works with negative, float, and zero numbers correctly', () => {
+        const mockRegistry = new PluginRegistry();
+        const program: IRProgram = {
+            functions: {
+                'main': {
+                    name: 'main',
+                    entryBlockId: 'b1',
+                    blocks: {
+                        'b1': {
+                            label: 'b1',
+                            instructions: [
+                                { opcode: 'sym_declare', operands: ['x', 10] },
+                                { opcode: 'math_add', operands: ['x', -15] },
+                                { opcode: 'math_add', operands: ['x', 0] },
+                                { opcode: 'math_add', operands: ['x', 2.5] },
+                            ]
+                        }
+                    }
+                }
+            }
+        };
+
+        const interpreter = new Interpreter(program, mockRegistry);
+        const ctx = new ExecutionContext('t1', 'b1');
+
+        interpreter.executeSlice('t1', 'main', ctx, 10, 0);
+        expect(ctx.memory.query('x')).toBe(-2.5); // 10 - 15 + 0 + 2.5 = -2.5
+    });
+
+    it('sys_call yielding does not advance the instruction pointer so it resumes properly', () => {
+        const mockRegistry = new PluginRegistry();
+        const syscallSpy = vi.fn().mockReturnValue({ status: 'YIELD_UNTIL_TIME', resumeTimeMs: 1000 });
+
+        mockRegistry.register({
+            name: 'test',
+            blockCompilers: {},
+            syscalls: { 'testYield': syscallSpy }
+        });
+
+        const program: IRProgram = {
+            functions: {
+                'main': {
+                    name: 'main',
+                    entryBlockId: 'b1',
+                    blocks: {
+                        'b1': {
+                            label: 'b1',
+                            instructions: [
+                                { opcode: 'sym_declare', operands: ['x', 0] },
+                                { opcode: 'sys_call', operands: ['testYield'] },
+                                { opcode: 'math_add', operands: ['x', 1] }
+                            ]
+                        }
+                    }
+                }
+            }
+        };
+
+        const interpreter = new Interpreter(program, mockRegistry);
+        const ctx = new ExecutionContext('t1', 'b1');
+
+        // First execution hits the sys_call and yields
+        const status1 = interpreter.executeSlice('t1', 'main', ctx, 10, 0);
+        expect(status1.status).toBe('YIELD_UNTIL_TIME');
+        expect(ctx.instructionPointer).toBe(2); // Pointer advanced past sys_call
+        expect(ctx.memory.query('x')).toBe(0);
+
+        // Resume: Assuming scheduler changed the mock to not yield next time
+        syscallSpy.mockReturnValueOnce(undefined);
+        const status2 = interpreter.executeSlice('t1', 'main', ctx, 10, 1000);
+        expect(status2.status).toBe('THREAD_HALTED');
+        expect(ctx.instructionPointer).toBe(3); // Pointer finished
+        expect(ctx.memory.query('x')).toBe(1); // Math add ran
     });
 });
