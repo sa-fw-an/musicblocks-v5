@@ -1,6 +1,6 @@
-import type { IRProgram } from './ir';
-import { ExecutionContext } from './memory';
-import { PluginRegistry } from './plugin-registry';
+import type { IRProgram } from '@/core/ir';
+import { ExecutionContext } from '@/core/memory';
+import { PluginRegistry } from '@/core/plugin-registry';
 
 export type ExecutionStatus =
     | { status: 'COMPLETED_SLICE' }
