@@ -5,6 +5,7 @@ interface WorkspaceState {
     blocks: Record<BlockId, BlockNode>; // Flat dictionary of all blocks by ID
     rootBlocks: BlockId[]; // Array of IDs for blocks sitting freely on the canvas
     addBlock: (block: BlockNode) => void;
+    detachBlock: (id: BlockId) => void;
     connectBlocks: (parentId: BlockId, childId: BlockId) => void;
     moveBlock: (id: BlockId, x: number, y: number) => void;
 }
@@ -28,60 +29,80 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             rootBlocks: [...state.rootBlocks, block.id],
         })),
 
+    detachBlock: (id: BlockId) =>
+        set((state) => {
+            const newBlocks = { ...state.blocks };
+            const newRootBlocks = new Set(state.rootBlocks);
+
+            let hasParent = false;
+            for (const [otherId, b] of Object.entries(newBlocks)) {
+                if (b.next === id) {
+                    hasParent = true;
+                    newBlocks[otherId] = { ...b, next: undefined };
+                    break;
+                }
+            }
+
+            if (hasParent) {
+                newRootBlocks.add(id);
+            }
+
+            return {
+                rootBlocks: Array.from(newRootBlocks),
+                blocks: newBlocks
+            };
+        }),
+
     connectBlocks: (parentId: BlockId, childId: BlockId) =>
         set((state) => {
             const parent = state.blocks[parentId];
-            let child = state.blocks[childId];
+            const child = state.blocks[childId];
 
             if (!parent || !child) return state;
 
             // --- CYCLE PREVENTION ---
-            // If the user tries to drop a parent onto its own child (or itself), abort
-            let currentPathId: BlockId | undefined = childId;
+            // If the drop target (parentId) is a descendant of the dragged block (childId),
+            // or is the dragged block itself, abort to prevent infinite loops.
+            let currentPathId: BlockId | undefined = parentId;
             while (currentPathId) {
-                if (currentPathId === parentId) {
-                    console.warn('Cycle detected! Cannot connect block to its own child.');
+                if (currentPathId === childId) {
+                    console.warn(`Cannot drop block ${childId} onto its own descendant ${parentId}.`);
                     return state;
                 }
                 currentPathId = state.blocks[currentPathId]?.next;
             }
 
-            // Traverse to the true tail of the chain the user dropped ONTO
-            let tailId = parentId;
-            let tail = state.blocks[tailId];
-            while (tail.next && state.blocks[tail.next]) {
-                tailId = tail.next;
-                tail = state.blocks[tailId];
-            }
-
-            // If the block we are attaching (childId) was previously connected to something else,
-            // we must detach it from its old parent first to avoid orphaned references
-            const newBlocks = { ...state.blocks };
-            let oldParentId: BlockId | undefined = undefined;
-
-            for (const [id, b] of Object.entries(newBlocks)) {
-                if (b.next === childId) {
-                    oldParentId = id;
-                    newBlocks[id] = { ...b, next: undefined };
-                    break;
-                }
-            }
-
-            // Remove child from root blocks (if it was one)
+            // Remove child from root blocks
             const newRootBlocks = state.rootBlocks.filter(id => id !== childId);
+            const newBlocks = { ...state.blocks };
+            const oldNextId = parent.next;
 
-            // Connect them
-            newBlocks[tailId] = {
-                ...tail,
+            // Connect parent directly to dropped child tree
+            newBlocks[parentId] = {
+                ...parent,
                 next: childId
             };
 
-            // Clear x/y from child so it nests under parent naturally
+            // Clear x/y from incoming child so it nests under parent naturally
             newBlocks[childId] = {
                 ...child,
                 x: undefined,
                 y: undefined
             };
+
+            // Splicing: If the parent already had a child, attach it to the tail of the dropped tree
+            if (oldNextId) {
+                let tailId = childId;
+                let tail = newBlocks[tailId];
+                while (tail.next && newBlocks[tail.next]) {
+                    tailId = tail.next;
+                    tail = newBlocks[tailId];
+                }
+                newBlocks[tailId] = {
+                    ...tail,
+                    next: oldNextId
+                };
+            }
 
             return {
                 rootBlocks: newRootBlocks,
@@ -94,29 +115,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             const block = state.blocks[id];
             if (!block) return state;
 
-            const newBlocks = { ...state.blocks };
-            const newRootBlocks = new Set(state.rootBlocks);
-
-            // If it had a parent, detach it
-            let hasParent = false;
-            for (const [otherId, b] of Object.entries(newBlocks)) {
-                if (b.next === id) {
-                    hasParent = true;
-                    newBlocks[otherId] = { ...b, next: undefined };
-                    break;
-                }
-            }
-
-            // If it was just detached, it must become a root block again
-            if (hasParent) {
-                newRootBlocks.add(id);
-            }
-
-            newBlocks[id] = { ...block, x, y };
-
             return {
-                rootBlocks: Array.from(newRootBlocks),
-                blocks: newBlocks,
+                blocks: {
+                    ...state.blocks,
+                    [id]: { ...block, x, y },
+                },
             };
         }),
 }));

@@ -34,6 +34,13 @@ function App() {
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+
+    // Immediate Detachment Rule: If we are dragging an actual block off the canvas (not a palette spawner)
+    const activeIdString = event.active.id as string;
+    if (activeIdString.startsWith('drag-')) {
+      const rawId = activeIdString.replace('drag-', '');
+      useWorkspaceStore.getState().detachBlock(rawId);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -42,42 +49,52 @@ function App() {
 
     setActiveId(null);
 
-    // If dragging from palette
+    // Scenario 1: Dragging from Palette (Spawning new node)
     if (activeIdString.startsWith('palette-')) {
-      // Create a new block
       const type = active.data.current?.type as string;
       const defaultInputs = active.data.current?.defaultInputs || {};
 
       const newBlock: BlockNode = {
-        id: `b${Date.now()}`, // Unique ID
+        id: `b${Date.now()}`,
         type,
         inputs: defaultInputs,
-        // Approximate drop coordinates against the main canvas bounding box by using the translated rect
-        x: active.rect.current.translated ? active.rect.current.translated.left - 250 : delta.x + 250, // 250px is the palette width
-        y: active.rect.current.translated ? active.rect.current.translated.top - 70 : delta.y // 70px approx header height
+        x: active.rect.current.translated ? active.rect.current.translated.left - 250 : delta.x + 250,
+        y: active.rect.current.translated ? active.rect.current.translated.top - 70 : delta.y
       };
 
       addBlock(newBlock);
 
-      // Check if dropped over another block to snap it immediately
-      if (over && over.id !== newBlock.id) {
-        useWorkspaceStore.getState().connectBlocks(over.id as string, newBlock.id);
+      // Snap if dropped over a valid dropzone
+      if (over && (over.id as string).startsWith('drop-')) {
+        const dropId = (over.id as string).replace('drop-', '');
+        useWorkspaceStore.getState().connectBlocks(dropId, newBlock.id);
       }
       return;
     }
 
-    // Moving an existing block
-    const block = blocks[activeIdString];
-    if (block) {
-      if (over && over.id !== activeIdString) {
-        // Snap!
-        useWorkspaceStore.getState().connectBlocks(over.id as string, activeIdString);
-      } else {
-        // Free drop on the canvas
-        const newX = (block.x || 0) + delta.x;
-        const newY = (block.y || 0) + delta.y;
-        moveBlock(activeIdString, newX, newY);
+    // Scenario 2: Moving existing block across the canvas
+    if (activeIdString.startsWith('drag-')) {
+      const rawDragId = activeIdString.replace('drag-', '');
+      const block = blocks[rawDragId];
+
+      if (!block) return;
+
+      // Snapping to an existing Droppable Node
+      if (over && (over.id as string).startsWith('drop-')) {
+        const rawDropId = (over.id as string).replace('drop-', '');
+
+        // Do not connect to self
+        if (rawDropId !== rawDragId) {
+          useWorkspaceStore.getState().connectBlocks(rawDropId, rawDragId);
+          return;
+        }
       }
+
+      // Dropped onto empty Canvas (Free float update)
+      // Use exact translated coordinates of the ghost to place it where it was dropped
+      const newX = active.rect.current.translated ? active.rect.current.translated.left - 250 : (block.x || 0) + delta.x;
+      const newY = active.rect.current.translated ? active.rect.current.translated.top - 70 : (block.y || 0) + delta.y;
+      moveBlock(rawDragId, newX, newY);
     }
   };
 

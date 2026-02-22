@@ -13,12 +13,12 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
 
     // Set up dnd-kit draggable hook
     const dragData = useDraggable({
-        id: id,
-        disabled: !isRoot || isOverlay, // Prevent dragging individual sub-blocks for now, and don't make overlay draggable
+        id: `drag-${id}`,
+        disabled: isOverlay, // Allow dragging of sub-blocks by removing !isRoot restriction
     });
 
     const dropData = useDroppable({
-        id: id,
+        id: `drop-${id}`,
         disabled: isOverlay,
     });
 
@@ -55,7 +55,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
     };
 
     return (
-        <div ref={setDragNodeRef} style={style} {...(isRoot && !isOverlay ? attributes : {})} {...(isRoot && !isOverlay ? listeners : {})}>
+        <div ref={setDragNodeRef} style={style} {...(!isOverlay ? attributes : {})} {...(!isOverlay ? listeners : {})}>
             <div
                 ref={setDropNodeRef}
                 style={{
@@ -66,7 +66,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
                     display: 'inline-block',
                     minWidth: '200px',
                     boxShadow: isRoot ? '0 4px 6px rgba(0,0,0,0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
-                    cursor: isRoot && !isOverlay ? 'grab' : 'default',
+                    cursor: !isOverlay ? 'grab' : 'default',
                     // Visual feedback for drop zone
                     borderBottomWidth: isOver ? '6px' : '2px',
                 }}
