@@ -5,15 +5,21 @@ import { PluginRegistry } from './plugin-registry';
 export type ExecutionStatus =
     | { status: 'COMPLETED_SLICE' }
     | { status: 'YIELD_UNTIL_TIME'; resumeTimeMs: number }
-    | { status: 'THREAD_HALTED' };
+    | { status: 'THREAD_HALTED' }
+    | { status: 'HIT_BREAKPOINT'; astNodeId: string };
 
 export class Interpreter {
     private program: IRProgram;
     private registry: PluginRegistry;
+    private breakpoints: Set<string> = new Set();
 
     constructor(program: IRProgram, registry: PluginRegistry) {
         this.program = program;
         this.registry = registry;
+    }
+
+    setBreakpoints(breakpoints: Set<string>) {
+        this.breakpoints = breakpoints;
     }
 
     executeSlice(_threadId: string, funcName: string, context: ExecutionContext, sliceSize: number, currentTimeMs: number): ExecutionStatus {
@@ -31,6 +37,20 @@ export class Interpreter {
             }
 
             const inst = block.instructions[context.instructionPointer];
+
+            if (
+                inst.astNodeId &&
+                this.breakpoints.has(inst.astNodeId) &&
+                inst.astNodeId !== (context as any).lastBreakpointHit
+            ) {
+                (context as any).lastBreakpointHit = inst.astNodeId;
+                return { status: 'HIT_BREAKPOINT', astNodeId: inst.astNodeId };
+            }
+
+            if (inst.astNodeId !== (context as any).lastBreakpointHit) {
+                (context as any).lastBreakpointHit = undefined;
+            }
+
             context.instructionPointer++;
             cycles++;
 

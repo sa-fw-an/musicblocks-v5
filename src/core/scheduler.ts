@@ -17,6 +17,9 @@ export class Scheduler {
     private runQueue: ThreadControlBlock[] = [];
     private waitQueue: WaitQueueEntry[] = [];
     private currentTimeMs: number = 0;
+    private isPaused: boolean = false;
+    private breakpoints: Set<string> = new Set();
+    public onBreakpointHit?: (astNodeId: string) => void;
 
     constructor(interpreter: Interpreter) {
         this.interpreter = interpreter;
@@ -27,7 +30,27 @@ export class Scheduler {
         this.runQueue.push({ id: threadId, funcName, context });
     }
 
-    pulse(deltaTimeMs: number) {
+    pause() {
+        this.isPaused = true;
+    }
+
+    resume() {
+        this.isPaused = false;
+    }
+
+    step() {
+        this.isPaused = false;
+        this.pulse(0, 1);
+        this.isPaused = true;
+        return this.getActiveNodeIds();
+    }
+
+    setBreakpoints(breakpoints: Set<string>) {
+        this.breakpoints = breakpoints;
+        this.interpreter.setBreakpoints(this.breakpoints);
+    }
+
+    pulse(deltaTimeMs: number, maxInstructions: number = 10) {
         this.currentTimeMs += deltaTimeMs;
 
         // 1. Check wait queue for unblocked threads
@@ -38,19 +61,28 @@ export class Scheduler {
             }
         }
 
+        if (this.isPaused && maxInstructions > 1) {
+            return;
+        }
+
         // 2. Execute a slice for all threads in the run queue
         const activeThreadsCount = this.runQueue.length;
         for (let i = 0; i < activeThreadsCount; i++) {
             const tcb = this.runQueue.shift();
             if (!tcb) continue;
 
-            const sliceSize = 10;
+            const sliceSize = maxInstructions;
             const status = this.interpreter.executeSlice(tcb.id, tcb.funcName, tcb.context, sliceSize, this.currentTimeMs);
 
             if (status.status === 'COMPLETED_SLICE') {
                 this.runQueue.push(tcb); // Add back to end of run queue
             } else if (status.status === 'YIELD_UNTIL_TIME') {
                 this.waitQueue.push({ tcb, resumeTimeMs: status.resumeTimeMs });
+            } else if (status.status === 'HIT_BREAKPOINT') {
+                this.pause();
+                if (this.onBreakpointHit) this.onBreakpointHit(status.astNodeId);
+                this.runQueue.unshift(tcb); // Prepend so it resumes here later
+                return; // Stop processing further threads to respect the breakpoint pause globally
             } else if (status.status === 'THREAD_HALTED') {
                 // Do not re-enqueue
             }

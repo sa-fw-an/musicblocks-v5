@@ -41,7 +41,8 @@ const TrashCan = () => {
 function App() {
   const { blocks, rootBlocks, moveBlock, addBlock } = useWorkspaceStore();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const { play, stop } = useVM();
+  const { play, stop, pause, resume, step } = useVM();
+  const isVMPaused = useWorkspaceStore(state => state.isVMPaused);
 
   const handlePlay = async () => {
     await play(rootBlocks);
@@ -224,18 +225,37 @@ function App() {
           >
             🗑️ Clear All
           </button>
-          <button
-            onClick={handlePlay}
-            style={{ padding: '6px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '1rem' }}
-          >
-            ▶️ Play
-          </button>
-          <button
-            onClick={handleStop}
-            style={{ padding: '6px 16px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}
-          >
-            🛑 Stop
-          </button>
+          <div style={{ marginLeft: '1rem', display: 'flex', gap: '0.5rem', backgroundColor: '#495057', padding: '6px 8px', borderRadius: '6px' }}>
+            <button
+              onClick={handlePlay}
+              style={{ padding: '6px 16px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+              title="Start or Restart execution"
+            >
+              ▶️ Play
+            </button>
+            <button
+              onClick={isVMPaused ? resume : pause}
+              style={{ padding: '6px 16px', backgroundColor: '#ffc107', color: 'black', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+              title={isVMPaused ? "Resume execution" : "Pause execution"}
+            >
+              {isVMPaused ? '▶️ Resume' : '⏸ Pause'}
+            </button>
+            <button
+              onClick={step}
+              disabled={!isVMPaused}
+              style={{ padding: '6px 16px', backgroundColor: isVMPaused ? '#17a2b8' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: isVMPaused ? 'pointer' : 'not-allowed', fontWeight: 'bold', opacity: isVMPaused ? 1 : 0.6 }}
+              title="Step forward one instruction"
+            >
+              ⏭ Step
+            </button>
+            <button
+              onClick={handleStop}
+              style={{ padding: '6px 16px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+              title="Stop execution completely"
+            >
+              ⏹ Stop
+            </button>
+          </div>
         </div>
       </header>
 

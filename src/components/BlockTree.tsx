@@ -17,6 +17,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
 
     const node = useWorkspaceStore(state => state.blocks[id]);
     const isActive = useWorkspaceStore(state => state.activeBlockIds.includes(id));
+    const isBreakpoint = useWorkspaceStore(state => state.breakpointBlockIds?.has(id));
 
     // Set up dnd-kit draggable hook
     const dragData = useDraggable({
@@ -88,7 +89,14 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
                     borderBottomWidth: node.type === 'repeat' ? '1px' : (isOver ? '6px' : '2px'),
                 }}
             >
-                <div style={{ fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.9rem', color: '#495057' }}>
+                <div
+                    onClick={() => useWorkspaceStore.getState().toggleBreakpoint(id)}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    style={{ fontWeight: 'bold', marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.9rem', color: '#495057', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+                >
+                    {isBreakpoint && (
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#dc3545', marginRight: '6px', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                    )}
                     {node.type}
                 </div>
 

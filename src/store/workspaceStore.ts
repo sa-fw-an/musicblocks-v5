@@ -5,6 +5,8 @@ interface WorkspaceState {
     blocks: Record<BlockId, BlockNode>; // Flat dictionary of all blocks by ID
     rootBlocks: BlockId[]; // Array of IDs for blocks sitting freely on the canvas
     activeBlockIds: string[]; // Node IDs currently executing in the VM
+    isVMPaused: boolean;
+    breakpointBlockIds: Set<string>;
 
     addBlock: (block: BlockNode) => void;
     deleteBlock: (id: BlockId) => void;
@@ -16,6 +18,8 @@ interface WorkspaceState {
     loadProject: (projectData: string) => void;
     clearWorkspace: () => void;
     setActiveBlockIds: (ids: string[]) => void;
+    setVMPaused: (paused: boolean) => void;
+    toggleBreakpoint: (id: string) => void;
 }
 
 // Initial state representing our C4 -> D4 -> E4 program, but normalized
@@ -31,8 +35,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     // For now, only the 'start' block is a root block sitting on the canvas
     rootBlocks: ['b1'],
     activeBlockIds: [],
+    isVMPaused: false,
+    breakpointBlockIds: new Set<string>(),
 
     setActiveBlockIds: (ids: string[]) => set({ activeBlockIds: ids }),
+    setVMPaused: (paused: boolean) => set({ isVMPaused: paused }),
+    toggleBreakpoint: (id: string) => set((state) => {
+        const newSet = new Set(state.breakpointBlockIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        return { breakpointBlockIds: newSet };
+    }),
 
     addBlock: (block: BlockNode) =>
         set((state) => ({
@@ -236,7 +252,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
                     return {
                         blocks: parsed.blocks,
                         rootBlocks: parsed.rootBlocks,
-                        activeBlockIds: []
+                        activeBlockIds: [],
+                        isVMPaused: false
                     };
                 }
             } catch (e) {
@@ -249,6 +266,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         set(() => ({
             blocks: {},
             rootBlocks: [],
-            activeBlockIds: []
+            activeBlockIds: [],
+            isVMPaused: false,
+            breakpointBlockIds: new Set()
         })),
 }));

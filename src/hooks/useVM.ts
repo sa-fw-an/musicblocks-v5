@@ -54,6 +54,15 @@ export function useVM() {
         schedulerRef.current = scheduler;
         registryRef.current = registry;
 
+        useWorkspaceStore.getState().setVMPaused(false);
+
+        scheduler.onBreakpointHit = (_astNodeId) => {
+            useWorkspaceStore.getState().setVMPaused(true);
+            if (schedulerRef.current) {
+                useWorkspaceStore.getState().setActiveBlockIds(schedulerRef.current.getActiveNodeIds());
+            }
+        };
+
         // Load all start threads
         for (const funcName of Object.keys(program.functions)) {
             const entryBlockId = program.functions[funcName].entryBlockId;
@@ -68,6 +77,9 @@ export function useVM() {
             lastTimeRef.current = time;
 
             if (schedulerRef.current) {
+                // One-way sync from UI store to VM
+                schedulerRef.current.setBreakpoints(useWorkspaceStore.getState().breakpointBlockIds);
+
                 schedulerRef.current.pulse(deltaTimeMs);
 
                 // Track active blocks and avoid React re-renders unless changed
@@ -95,6 +107,8 @@ export function useVM() {
         }
         schedulerRef.current = null;
 
+        useWorkspaceStore.getState().setVMPaused(false);
+
         // Clear Highlights
         useWorkspaceStore.getState().setActiveBlockIds([]);
 
@@ -109,5 +123,22 @@ export function useVM() {
         return stop;
     }, [stop]);
 
-    return { play, stop };
+    const pause = useCallback(() => {
+        schedulerRef.current?.pause();
+        useWorkspaceStore.getState().setVMPaused(true);
+    }, []);
+
+    const resume = useCallback(() => {
+        schedulerRef.current?.resume();
+        useWorkspaceStore.getState().setVMPaused(false);
+    }, []);
+
+    const step = useCallback(() => {
+        if (schedulerRef.current) {
+            const activeIds = schedulerRef.current.step();
+            useWorkspaceStore.getState().setActiveBlockIds(activeIds);
+        }
+    }, []);
+
+    return { play, stop, pause, resume, step };
 }

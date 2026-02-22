@@ -6,7 +6,8 @@ describe('Scheduler', () => {
     it('manages run queue and wait queue successfully', () => {
         // Mock Interpreter
         const mockInterpreter = {
-            executeSlice: vi.fn()
+            executeSlice: vi.fn(),
+            setBreakpoints: vi.fn()
         } as unknown as Interpreter;
 
         const scheduler = new Scheduler(mockInterpreter);
@@ -35,5 +36,61 @@ describe('Scheduler', () => {
 
         scheduler.pulse(10);
         expect((scheduler as any).runQueue.length).toBe(0); // Popped and halted
+    });
+
+    it('pause() prevents thread advancement on subsequent pulse calls', () => {
+        const mockInterpreter = {
+            executeSlice: vi.fn(),
+            setBreakpoints: vi.fn()
+        } as unknown as Interpreter;
+
+        const scheduler = new Scheduler(mockInterpreter);
+        scheduler.scheduleThread('t1', 'main', 'b1');
+
+        scheduler.pause();
+        scheduler.pulse(10);
+
+        expect(mockInterpreter.executeSlice).not.toHaveBeenCalled();
+    });
+
+    it('step() advances exactly one instruction', () => {
+        const mockInterpreter = {
+            executeSlice: vi.fn(),
+            setBreakpoints: vi.fn()
+        } as unknown as Interpreter;
+
+        const scheduler = new Scheduler(mockInterpreter);
+        scheduler.scheduleThread('t1', 'main', 'b1');
+        scheduler.pause();
+
+        vi.mocked(mockInterpreter.executeSlice).mockReturnValueOnce({ status: 'COMPLETED_SLICE' });
+
+        scheduler.step();
+
+        // 0 pulse time, maxInstructions = 1
+        expect(mockInterpreter.executeSlice).toHaveBeenCalledWith('t1', 'main', expect.anything(), 1, 0);
+        expect((scheduler as any).isPaused).toBe(true);
+    });
+
+    it('setBreakpoints() triggers onBreakpointHit when execution hits marked node', () => {
+        const mockInterpreter = {
+            executeSlice: vi.fn(),
+            setBreakpoints: vi.fn()
+        } as unknown as Interpreter;
+
+        const scheduler = new Scheduler(mockInterpreter);
+        scheduler.scheduleThread('t1', 'main', 'b1');
+
+        const hitCallback = vi.fn();
+        scheduler.onBreakpointHit = hitCallback;
+
+        // Mock the interpreter breaking
+        vi.mocked(mockInterpreter.executeSlice).mockReturnValueOnce({ status: 'HIT_BREAKPOINT', astNodeId: 'b_test' });
+
+        scheduler.pulse(10);
+
+        expect(hitCallback).toHaveBeenCalledWith('b_test');
+        expect((scheduler as any).isPaused).toBe(true);
+        expect((scheduler as any).runQueue.length).toBe(1); // Pre-empted thread put back in queue to resume
     });
 });
