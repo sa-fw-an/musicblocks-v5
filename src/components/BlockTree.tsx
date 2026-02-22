@@ -6,9 +6,15 @@ interface BlockTreeProps {
     id: string;
     isRoot?: boolean; // Only the absolute root of a chain is draggable on the canvas
     isOverlay?: boolean;
+    depth?: number;
 }
 
-export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOverlay = false }) => {
+export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOverlay = false, depth = 0 }) => {
+    if (depth > 50) {
+        console.error("Max tree depth exceeded for block", id, "- Preventing infinite render loop.");
+        return <div style={{ padding: 10, color: 'red', border: '1px solid red' }}>CYCLE ERROR</div>;
+    }
+
     const node = useWorkspaceStore(state => state.blocks[id]);
 
     // Set up dnd-kit draggable hook
@@ -88,7 +94,7 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
 
             {node.next && (
                 <div style={{ paddingLeft: '20px', borderLeft: '2px solid #dee2e6', marginLeft: '20px', marginTop: '4px' }}>
-                    <BlockTree id={node.next} isRoot={false} isOverlay={isOverlay} />
+                    <BlockTree id={node.next} isRoot={false} isOverlay={isOverlay} depth={depth + 1} />
                 </div>
             )}
         </div>

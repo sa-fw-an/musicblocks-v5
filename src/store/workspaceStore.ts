@@ -38,14 +38,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             for (const [otherId, b] of Object.entries(newBlocks)) {
                 if (b.next === id) {
                     hasParent = true;
+                    // Properly break the link without mutating the original object deeply
                     newBlocks[otherId] = { ...b, next: undefined };
                     break;
                 }
             }
 
+            // Only make it a root block if it actually detached from something
+            // to prevent duplicate insertions
             if (hasParent) {
                 newRootBlocks.add(id);
             }
+
+            // DO NOT copy x,y from anywhere. When detaching, it's just floating in dnd-kit land.
+            // On DragEnd, moveBlock will assign its exact drop coordinates.
 
             return {
                 rootBlocks: Array.from(newRootBlocks),
@@ -63,13 +69,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
             // --- CYCLE PREVENTION ---
             // If the drop target (parentId) is a descendant of the dragged block (childId),
             // or is the dragged block itself, abort to prevent infinite loops.
-            let currentPathId: BlockId | undefined = parentId;
-            while (currentPathId) {
-                if (currentPathId === childId) {
-                    console.warn(`Cannot drop block ${childId} onto its own descendant ${parentId}.`);
-                    return state;
+            const createsCycle = (startId: BlockId, targetId: BlockId) => {
+                let curr: BlockId | undefined = startId;
+                const visited = new Set<BlockId>();
+                while (curr) {
+                    if (curr === targetId) return true;
+                    if (visited.has(curr)) break; // already iterating a cycle
+                    visited.add(curr);
+                    curr = state.blocks[curr]?.next;
                 }
-                currentPathId = state.blocks[currentPathId]?.next;
+                return false;
+            };
+
+            if (createsCycle(childId, parentId) || createsCycle(parentId, childId)) {
+                console.warn(`Cycle detected/prevented: cannot connect ${parentId} to ${childId}`);
+                return state;
             }
 
             // Remove child from root blocks
