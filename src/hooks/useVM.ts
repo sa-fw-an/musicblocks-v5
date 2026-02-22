@@ -11,15 +11,11 @@ export function useVM() {
     const animationFrameRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number>(0);
     const schedulerRef = useRef<Scheduler | null>(null);
+    const registryRef = useRef<PluginRegistry | null>(null);
 
     const play = useCallback(async (rootBlockIds: BlockId[]) => {
         // Stop any existing loop
         stop();
-
-        // Optional: Pre-warm Tone.js user gesture here if needed, but the plugin can also handle it.
-        // It's safer to ensure AudioContext is started on the click handler boundary.
-        const Tone = await import('tone');
-        await Tone.start();
 
         const blocksObj = useWorkspaceStore.getState().blocks;
 
@@ -48,6 +44,7 @@ export function useVM() {
         // Initialize VM infrastructure
         const registry = new PluginRegistry();
         registry.register(MusicBlocksPlugin);
+        await registry.initializeAll();
 
         const compiler = new Compiler(registry);
         const program = compiler.compile(startNodes, blocks);
@@ -55,6 +52,7 @@ export function useVM() {
         const interpreter = new Interpreter(program, registry);
         const scheduler = new Scheduler(interpreter);
         schedulerRef.current = scheduler;
+        registryRef.current = registry;
 
         // Load all start threads
         for (const funcName of Object.keys(program.functions)) {
@@ -100,10 +98,10 @@ export function useVM() {
         // Clear Highlights
         useWorkspaceStore.getState().setActiveBlockIds([]);
 
-        // Stop Tone.js transport/synths if needed, though they trigger linearly
-        import('tone').then(() => {
-            // Can add Tone.Transport.stop() here if we used it, but we are using triggerAttackRelease with Tone.now()
-        });
+        if (registryRef.current) {
+            registryRef.current.cleanupAll();
+            registryRef.current = null;
+        }
     }, []);
 
     // Cleanup on unmount

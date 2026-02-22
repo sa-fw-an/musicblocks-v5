@@ -8,6 +8,8 @@ export type SyscallFunction = (args: any[], context: ExecutionContext, currentTi
 
 export interface CorePlugin {
     name: string;
+    onInitialize?: () => Promise<void> | void;
+    onCleanup?: () => Promise<void> | void;
     blockCompilers: Record<string, BlockCompilerFunction>;
     syscalls: Record<string, SyscallFunction>;
 }
@@ -33,5 +35,21 @@ export class PluginRegistry {
 
     getSyscall(syscallName: string): SyscallFunction | undefined {
         return this.syscalls.get(syscallName);
+    }
+
+    async initializeAll() {
+        for (const plugin of this.plugins.values()) {
+            if (plugin.onInitialize) {
+                await plugin.onInitialize();
+            }
+        }
+    }
+
+    async cleanupAll() {
+        for (const plugin of this.plugins.values()) {
+            if (plugin.onCleanup) {
+                await plugin.onCleanup();
+            }
+        }
     }
 }

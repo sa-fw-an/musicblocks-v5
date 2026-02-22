@@ -1,10 +1,30 @@
 import type { CorePlugin } from '@/core/plugin-registry';
-import * as Tone from 'tone';
 
-let synth: Tone.PolySynth | null = null;
+let ToneMod: typeof import('tone') | null = null;
+let synth: any = null;
 
 export const MusicBlocksPlugin: CorePlugin = {
     name: 'MusicBlocks',
+    onInitialize: async () => {
+        if (!ToneMod) {
+            ToneMod = await import('tone');
+        }
+        // Unit tests mock
+        const activeTone = (globalThis as any).__mockTone || ToneMod;
+
+        if (activeTone.context.state !== 'running') {
+            await activeTone.start();
+        }
+        if (!synth) {
+            synth = new activeTone.PolySynth(activeTone.Synth).toDestination();
+        }
+    },
+    onCleanup: async () => {
+        if (synth) {
+            synth.releaseAll();
+            // Since we lazy load tone and want things fresh, we could optionally disconnect/dispose but releaseAll is safe enough for stop
+        }
+    },
     blockCompilers: {
         'play_note': (node, instructions) => {
             const pitch = node.inputs.pitch || 'C4';
@@ -26,7 +46,7 @@ export const MusicBlocksPlugin: CorePlugin = {
 
             // Initialize audio on first play
             // Use mocked Tone for unit tests if it exists
-            const activeTone = (globalThis as any).__mockTone || Tone;
+            const activeTone = (globalThis as any).__mockTone || ToneMod;
 
             if (activeTone.context.state !== 'running') {
                 activeTone.start();
