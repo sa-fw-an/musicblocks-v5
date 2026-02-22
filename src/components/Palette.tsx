@@ -36,10 +36,10 @@ export const PaletteBlock: React.FC<PaletteBlockProps> = ({ type, defaultInputs,
     } else if (type === 'repeat') {
         backgroundColor = '#fff3cd';
         borderColor = '#ffeeba';
-    } else if (type === 'set_var') {
+    } else if (type === 'set_var' || type === 'set_tempo' || type === 'set_volume') {
         backgroundColor = '#f8d7da';
         borderColor = '#f5c6cb';
-    } else if (type === 'change_var') {
+    } else if (type === 'change_var' || type === 'print' || type === 'random') {
         backgroundColor = '#e2e3e5';
         borderColor = '#d6d8db';
     }
@@ -84,6 +84,10 @@ export const Palette: React.FC = () => {
             <PaletteBlock type="repeat" defaultInputs={{ iterations: 2 }} />
             <PaletteBlock type="set_var" defaultInputs={{ varName: 'myVar', value: 1 }} />
             <PaletteBlock type="change_var" defaultInputs={{ varName: 'myVar', amount: 1 }} />
+            <PaletteBlock type="random" defaultInputs={{ varName: 'myVar', min: 1, max: 10 }} />
+            <PaletteBlock type="set_tempo" defaultInputs={{ bpm: 120 }} />
+            <PaletteBlock type="set_volume" defaultInputs={{ level: 50 }} />
+            <PaletteBlock type="print" defaultInputs={{ message: "Hello World" }} />
 
         </aside>
     );

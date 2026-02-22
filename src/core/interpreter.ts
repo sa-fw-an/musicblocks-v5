@@ -91,6 +91,14 @@ export class Interpreter {
                     }
                     break;
                 }
+                case 'math_random': {
+                    const varName = inst.operands[0];
+                    const min = Number(resolvedOperands[1]) || 0;
+                    const max = Number(resolvedOperands[2]) || 0;
+                    const rand = Math.floor(Math.random() * (max - min + 1)) + min;
+                    context.memory.assign(varName, rand);
+                    break;
+                }
                 case 'jump':
                     context.currentBlockId = inst.operands[0];
                     context.instructionPointer = 0;

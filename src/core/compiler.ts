@@ -102,6 +102,12 @@ export class Compiler {
                     operands: [current.inputs.varName, current.inputs.value],
                     astNodeId: current.id
                 });
+            } else if (current.type === 'random') {
+                block.instructions.push({
+                    opcode: 'math_random',
+                    operands: [current.inputs.varName, current.inputs.min, current.inputs.max],
+                    astNodeId: current.id
+                });
             } else if (current.type === 'change_var') {
                 block.instructions.push({
                     opcode: 'math_add',

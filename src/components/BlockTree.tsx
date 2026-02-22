@@ -57,10 +57,10 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
     } else if (node.type === 'repeat') {
         backgroundColor = '#fff3cd';
         borderColor = '#ffeeba';
-    } else if (node.type === 'set_var') {
+    } else if (node.type === 'set_var' || node.type === 'set_tempo' || node.type === 'set_volume') {
         backgroundColor = '#f8d7da';
         borderColor = '#f5c6cb';
-    } else if (node.type === 'change_var') {
+    } else if (node.type === 'change_var' || node.type === 'print' || node.type === 'random') {
         backgroundColor = '#e2e3e5';
         borderColor = '#d6d8db';
     }
@@ -204,6 +204,82 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
                                     />
                                 </div>
                             </>
+                        ) : node.type === 'random' ? (
+                            <>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>varName:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.varName}
+                                        onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'varName', e.target.value)}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '80px' }}
+                                    />
+                                </div>
+                                <div style={{ marginBottom: '4px' }}>
+                                    <strong>min:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.min}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const isNum = !isNaN(Number(val)) && val !== '';
+                                            useWorkspaceStore.getState().updateBlockInput(node.id, 'min', isNum ? Number(val) : val);
+                                        }}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '40px' }}
+                                    />
+                                    <strong style={{ marginLeft: '8px' }}>max:</strong>
+                                    <input
+                                        type="text"
+                                        value={node.inputs.max}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const isNum = !isNaN(Number(val)) && val !== '';
+                                            useWorkspaceStore.getState().updateBlockInput(node.id, 'max', isNum ? Number(val) : val);
+                                        }}
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                        style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '40px' }}
+                                    />
+                                </div>
+                            </>
+                        ) : node.type === 'set_tempo' ? (
+                            <div style={{ marginBottom: '4px' }}>
+                                <strong>bpm:</strong>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="300"
+                                    value={node.inputs.bpm}
+                                    onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'bpm', Number(e.target.value))}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '60px' }}
+                                />
+                            </div>
+                        ) : node.type === 'set_volume' ? (
+                            <div style={{ marginBottom: '4px' }}>
+                                <strong>level:</strong>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={node.inputs.level}
+                                    onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'level', Number(e.target.value))}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '60px' }}
+                                />
+                            </div>
+                        ) : node.type === 'print' ? (
+                            <div style={{ marginBottom: '4px' }}>
+                                <strong>msg:</strong>
+                                <input
+                                    type="text"
+                                    value={node.inputs.message}
+                                    onChange={(e) => useWorkspaceStore.getState().updateBlockInput(node.id, 'message', e.target.value)}
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                    style={{ marginLeft: '8px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #ced4da', width: '120px' }}
+                                />
+                            </div>
                         ) : (
                             Object.entries(node.inputs).map(([key, value]) => (
                                 <div key={key}>
