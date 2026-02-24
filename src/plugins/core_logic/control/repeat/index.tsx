@@ -6,10 +6,10 @@ import { CATEGORY_COLORS } from '@/core/ui/constants';
 
 const COLOR = CATEGORY_COLORS.flow;
 
-const RepeatUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean; isBodyOver?: boolean }> = ({
-    node, isActive, isBreakpoint, isOver, isBodyOver,
+const RepeatUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean; isBodyOver?: boolean; bodySlot?: React.ReactNode }> = ({
+    node, isActive, isBreakpoint, isOver, isBodyOver, bodySlot,
 }) => (
-    <BlockShape shape="clamp" color={COLOR} label="Repeat" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} isBodyOver={isBodyOver}>
+    <BlockShape shape="flowClampOneArgBlock" color={COLOR} label="Repeat" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} isBodyOver={isBodyOver} bodySlot={bodySlot}>
         <BlockInput nodeId={node.id} field="iterations" type="number" label="times" min={1} width={60} />
     </BlockShape>
 );
@@ -17,7 +17,7 @@ const RepeatUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; 
 export const RepeatBlock: BlockDefinition = {
     type: 'repeat',
     label: 'Repeat',
-    shape: 'clamp',
+    shape: 'flowClampOneArgBlock',
     category: 'flow',
     color: COLOR,
     args: [{ name: 'iterations', type: 'number', default: 2 }],

@@ -9,7 +9,7 @@ const COLOR = CATEGORY_COLORS.boxes;
 const ChangeVarUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Change Variable" argRows={2} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="twoArgBlock" color={COLOR} label="Change Variable" argRows={2} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="varName" type="text"   label="name"   width={80} />
         <BlockInput nodeId={node.id} field="amount"  type="text"   label="by"     width={60} />
     </BlockShape>
@@ -18,7 +18,7 @@ const ChangeVarUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolea
 export const ChangeVarBlock: BlockDefinition = {
     type: 'change_var',
     label: 'Change Variable',
-    shape: 'stack',
+    shape: 'twoArgBlock',
     category: 'boxes',
     color: COLOR,
     args: [

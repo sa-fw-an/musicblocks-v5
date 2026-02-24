@@ -10,7 +10,7 @@ const COLOR = CATEGORY_COLORS.volume;
 const SetVolumeUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Set Volume" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="oneArgBlock" color={COLOR} label="Set Volume" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="level" type="number" label="level" min={0} max={100} width={60} />
     </BlockShape>
 );
@@ -18,7 +18,7 @@ const SetVolumeUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolea
 export const SetVolumeBlock: BlockDefinition = {
     type: 'set_volume',
     label: 'Set Volume',
-    shape: 'stack',
+    shape: 'oneArgBlock',
     category: 'volume',
     color: COLOR,
     args: [{ name: 'level', type: 'number', default: 50 }],

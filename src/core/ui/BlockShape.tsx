@@ -1,22 +1,10 @@
-import React from 'react';
-import type { BlockShape as BlockShapeType } from '@/core/registry/types';
-import {
-    STROKE_WIDTH,
-    BLOCK_MIN_WIDTH,
-    HEADER_HEIGHT,
-    VALUE_BLOCK_HEIGHT,
-} from '@/core/ui/constants';
-import {
-    buildStackPath,
-    buildHatPath,
-    buildClampPath,
-    buildValuePath,
-    buildBooleanPath,
-    stackBlockHeight,
-} from '@/core/ui/pathBuilder';
+import React, { useRef, useState, useEffect } from 'react';
+import type { ProtoblockShape } from '@/core/registry/types';
+import { STROKE_WIDTH, DEFAULTBLOCKSCALE } from '@/core/ui/constants';
+import { BLOCK_PATHS, isClampShape } from '@/core/ui/blockPaths';
 
 export interface BlockShapeProps {
-    shape: BlockShapeType;
+    shape: ProtoblockShape;
     color: string;
     label: string;
     width?: number;
@@ -51,7 +39,7 @@ export const BlockShape: React.FC<BlockShapeProps> = ({
     shape,
     color,
     label,
-    width,
+    width: _width,
     argRows = 0,
     bodyHeight = 36,
     isActive = false,
@@ -63,20 +51,37 @@ export const BlockShape: React.FC<BlockShapeProps> = ({
     style,
     className,
 }) => {
-    const W = width ?? BLOCK_MIN_WIDTH;
+    const def = BLOCK_PATHS[shape];
+    const bodySlotRef = useRef<HTMLDivElement>(null);
+    const [bodyContentHeight, setBodyContentHeight] = useState(0);
+
+    useEffect(() => {
+        if (!bodySlot || !bodySlotRef.current) return;
+        const ro = new ResizeObserver((entries) => {
+            for (const e of entries) setBodyContentHeight(e.contentRect.height);
+        });
+        ro.observe(bodySlotRef.current);
+        return () => ro.disconnect();
+    }, [bodySlot]);
+
+    if (!def) return null;
+
+    const scale = DEFAULTBLOCKSCALE;
     const stroke = darken(color);
     const activeGlow = isActive ? `drop-shadow(0 0 6px #fbbf24)` : undefined;
     const bpGlow = isBreakpoint ? `drop-shadow(0 0 5px #dc2626)` : undefined;
     const filter = activeGlow ?? bpGlow;
 
-    if (shape === 'value') {
-        const H = VALUE_BLOCK_HEIGHT;
-        const vW = Math.max(60, W);
-        const path = buildValuePath(vW, H);
+    const w = def.width * scale;
+    const h = def.height * scale;
+
+    // Value/media blocks: compact, label centered
+    if (shape === 'valueBlock' || shape === 'mediaBlock') {
         return (
             <svg
-                width={vW}
-                height={H}
+                width={w}
+                height={h}
+                viewBox={def.viewBox}
                 style={{
                     display: 'inline-block',
                     verticalAlign: 'middle',
@@ -89,9 +94,21 @@ export const BlockShape: React.FC<BlockShapeProps> = ({
                 className={className}
                 overflow="visible"
             >
-                <path d={path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} />
-                <text x={vW / 2} y={H / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                    style={{ fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: 600, fill: '#fff', pointerEvents: 'none', userSelect: 'none' }}>
+                <path d={def.path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" />
+                <text
+                    x={def.width / 2}
+                    y={def.height / 2 + 1}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-ui)',
+                        fontWeight: 600,
+                        fill: '#fff',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                    }}
+                >
                     {label}
                 </text>
                 {children}
@@ -99,14 +116,22 @@ export const BlockShape: React.FC<BlockShapeProps> = ({
         );
     }
 
-    if (shape === 'boolean') {
-        const H = VALUE_BLOCK_HEIGHT;
-        const bW = Math.max(80, W);
-        const path = buildBooleanPath(bW, H);
+    // Boolean blocks: label centered
+    if (
+        shape === 'booleanZeroArgBlock' ||
+        shape === 'booleanOneBooleanArgBlock' ||
+        shape === 'booleanTwoBooleanArgBlock' ||
+        shape === 'booleanTwoArgBlock'
+    ) {
+        const vbParts = def.viewBox.split(' ');
+        const vbMinY = vbParts.length >= 4 ? Number(vbParts[1]) : 0;
+        const vbHeight = vbParts.length >= 4 ? Number(vbParts[3]) : def.height;
+        const labelY = vbMinY + vbHeight / 2 + 1;
         return (
             <svg
-                width={bW}
-                height={H}
+                width={w}
+                height={h}
+                viewBox={def.viewBox}
                 style={{
                     display: 'inline-block',
                     verticalAlign: 'middle',
@@ -119,9 +144,27 @@ export const BlockShape: React.FC<BlockShapeProps> = ({
                 className={className}
                 overflow="visible"
             >
-                <path d={path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} />
-                <text x={bW / 2} y={H / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                    style={{ fontSize: 12, fontFamily: 'var(--font-ui)', fontWeight: 600, fill: '#fff', pointerEvents: 'none', userSelect: 'none' }}>
+                {def.pathTransform ? (
+                    <g transform={def.pathTransform}>
+                        <path d={def.path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" />
+                    </g>
+                ) : (
+                    <path d={def.path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" />
+                )}
+                <text
+                    x={def.width / 2}
+                    y={labelY}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-ui)',
+                        fontWeight: 600,
+                        fill: '#fff',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                    }}
+                >
                     {label}
                 </text>
                 {children}
@@ -129,96 +172,152 @@ export const BlockShape: React.FC<BlockShapeProps> = ({
         );
     }
 
-    if (shape === 'clamp') {
-        const headerH = HEADER_HEIGHT + argRows * 24;
-        const footH = HEADER_HEIGHT;
-        const bH = Math.max(bodyHeight, 36);
-        const totalH = headerH + bH + footH;
-        const path = buildClampPath(W, headerH, bH, footH);
+    // Clamp blocks: header + body slot (extends with nested content)
+    if (isClampShape(shape) && (def.bodySlotTop != null || bodySlot != null)) {
+        const bodyTop = (def.bodySlotTop ?? 0) * scale;
+        const bodyH = (def.bodySlotHeight ?? 36) * scale;
+        const headerCenterY = (def.bodySlotTop ?? 10) / 2 + 1;
+        const effectiveBodyHeight = Math.max(bodyH, bodyHeight, bodyContentHeight);
+        const containerMinHeight = bodyTop + effectiveBodyHeight;
 
         return (
-            <div style={{
+            <div
+                style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    minHeight: containerMinHeight,
+                    outline: isOver ? DROP_HIGHLIGHT : undefined,
+                    outlineOffset: 2,
+                    borderRadius: 4,
+                    ...style,
+                }}
+                className={className}
+            >
+                <svg width={w} height={h} viewBox={def.viewBox} overflow="visible" style={{ display: 'block', filter }}>
+                    <path d={def.path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" />
+                    {isBreakpoint && <circle cx={10} cy={headerCenterY} r={5} fill="#dc2626" />}
+                    <text
+                        x={18}
+                        y={headerCenterY}
+                        textAnchor="start"
+                        dominantBaseline="middle"
+                        style={{
+                            fontSize: 11,
+                            fontFamily: 'var(--font-ui)',
+                            fontWeight: 700,
+                            fill: '#fff',
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                            textTransform: 'uppercase',
+                        }}
+                    >
+                        {label}
+                    </text>
+                </svg>
+                {argRows > 0 && children && (
+                    <div style={{ position: 'absolute', top: bodyTop - 18, left: 8, right: 8, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
+                        {children}
+                    </div>
+                )}
+                {bodySlot != null && (
+                    <>
+                        <div
+                            ref={bodySlotRef}
+                            style={{
+                                position: 'absolute',
+                                top: bodyTop,
+                                left: 20,
+                                right: 8,
+                                minHeight: Math.max(bodyH, bodyHeight),
+                                paddingLeft: 4,
+                                outline: isBodyOver ? DROP_HIGHLIGHT : undefined,
+                                outlineOffset: 2,
+                                borderRadius: 4,
+                            }}
+                        >
+                            {bodySlot}
+                        </div>
+                        {bodyContentHeight > bodyH && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: bodyTop + bodyH,
+                                    left: 8,
+                                    right: 8,
+                                    height: bodyContentHeight - bodyH,
+                                    background: color,
+                                    opacity: 0.92,
+                                    borderLeft: `3px solid ${stroke}`,
+                                    borderBottomLeftRadius: 8,
+                                    pointerEvents: 'none',
+                                }}
+                            />
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    }
+
+    // Stack blocks (zeroArg, oneArg, twoArg, threeArg, stackClamp, etc.)
+    const headerY = shape === 'stackClampZeroArgBlock' || shape === 'stackClampOneArgBlock' ? 16 : 10;
+    const hasInnies = ['oneArgBlock', 'twoArgBlock', 'threeArgBlock'].includes(shape);
+    const labelX = hasInnies ? 18 : def.width / 2;
+    const labelAnchor = hasInnies ? 'start' : 'middle';
+
+    return (
+        <div
+            style={{
                 position: 'relative',
                 display: 'inline-block',
                 outline: isOver ? DROP_HIGHLIGHT : undefined,
                 outlineOffset: 2,
                 borderRadius: 4,
                 ...style,
-            }} className={className}>
-                <svg
-                    width={W}
-                    height={totalH + 8}
-                    overflow="visible"
-                    style={{ display: 'block', filter }}
+            }}
+            className={className}
+        >
+            <svg width={w} height={h} viewBox={def.viewBox} overflow="visible" style={{ display: 'block', filter }}>
+                <path d={def.path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} strokeLinejoin="round" />
+                {isBreakpoint && <circle cx={10} cy={headerY} r={5} fill="#dc2626" />}
+                <text
+                    x={labelX}
+                    y={headerY + 1}
+                    textAnchor={labelAnchor}
+                    dominantBaseline="middle"
+                    style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-ui)',
+                        fontWeight: 700,
+                        fill: '#fff',
+                        pointerEvents: 'none',
+                        userSelect: 'none',
+                        textTransform: 'uppercase',
+                    }}
                 >
-                    <path d={path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} fillRule="evenodd" />
-                    {/* Breakpoint dot */}
-                    {isBreakpoint && <circle cx={10} cy={headerH / 2} r={5} fill="#dc2626" />}
-                    {/* Label */}
-                    <text x={W / 2} y={headerH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                        style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 700, fill: '#fff', pointerEvents: 'none', userSelect: 'none', textTransform: 'uppercase' }}>
-                        {label}
-                    </text>
-                </svg>
-                {/* Arg rows */}
-                {argRows > 0 && (
-                    <div style={{ position: 'absolute', top: HEADER_HEIGHT, left: 8, right: 8 }}>
-                        {children}
-                    </div>
-                )}
-                {/* Body slot */}
-                <div style={{
-                    position: 'absolute',
-                    top: headerH,
-                    left: 20,
-                    width: W - 22,
-                    minHeight: bH,
-                    outline: isBodyOver ? DROP_HIGHLIGHT : undefined,
-                    outlineOffset: 2,
-                    borderRadius: 4,
-                }}>
-                    {bodySlot}
-                </div>
-            </div>
-        );
-    }
-
-    // Stack or Hat
-    const H = stackBlockHeight(argRows);
-    const path = shape === 'hat' ? buildHatPath(W, H) : buildStackPath(W, H);
-    const topPad = shape === 'hat' ? 10 : 0;
-
-    return (
-        <div style={{
-            position: 'relative',
-            display: 'inline-block',
-            outline: isOver ? DROP_HIGHLIGHT : undefined,
-            outlineOffset: 2,
-            borderRadius: 4,
-            ...style,
-        }} className={className}>
-            <svg
-                width={W}
-                height={H + topPad + 8}
-                overflow="visible"
-                style={{ display: 'block', filter }}
-            >
-                <g transform={`translate(0,${topPad})`}>
-                    <path d={path} fill={color} stroke={stroke} strokeWidth={STROKE_WIDTH} />
-                    {isBreakpoint && <circle cx={10} cy={HEADER_HEIGHT / 2} r={5} fill="#dc2626" />}
-                    <text
-                        x={W / 2} y={HEADER_HEIGHT / 2 + 1}
-                        textAnchor="middle" dominantBaseline="middle"
-                        style={{ fontSize: 13, fontFamily: 'var(--font-ui)', fontWeight: 700, fill: '#fff', pointerEvents: 'none', userSelect: 'none', textTransform: 'uppercase' }}
-                    >
-                        {label}
-                    </text>
-                </g>
+                    {label}
+                </text>
             </svg>
-            {/* Arg rows rendered as overlay */}
-            {argRows > 0 && (
-                <div style={{ position: 'absolute', top: topPad + HEADER_HEIGHT, left: 8, right: 8 }}>
+            {argRows > 0 && children && (
+                <div style={{ position: 'absolute', top: headerY + 14, left: 8, right: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {children}
+                </div>
+            )}
+            {isClampShape(shape) && bodySlot != null && def.bodySlotTop != null && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: def.bodySlotTop * scale,
+                        left: 20,
+                        right: 8,
+                        minHeight: (def.bodySlotHeight ?? 36) * scale,
+                        paddingLeft: 4,
+                        outline: isBodyOver ? DROP_HIGHLIGHT : undefined,
+                        outlineOffset: 2,
+                        borderRadius: 4,
+                    }}
+                >
+                    {bodySlot}
                 </div>
             )}
         </div>

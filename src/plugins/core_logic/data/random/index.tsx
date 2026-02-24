@@ -9,7 +9,7 @@ const COLOR = CATEGORY_COLORS.number;
 const RandomUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Random" argRows={3} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="threeArgBlock" color={COLOR} label="Random" argRows={3} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="varName" type="text"   label="store in" width={70} />
         <BlockInput nodeId={node.id} field="min"     type="number" label="min"       width={50} />
         <BlockInput nodeId={node.id} field="max"     type="number" label="max"       width={50} />
@@ -19,7 +19,7 @@ const RandomUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; 
 export const RandomBlock: BlockDefinition = {
     type: 'random',
     label: 'Random',
-    shape: 'stack',
+    shape: 'threeArgBlock',
     category: 'number',
     color: COLOR,
     args: [

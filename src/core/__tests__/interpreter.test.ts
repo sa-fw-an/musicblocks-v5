@@ -12,7 +12,7 @@ function makeRegistryWithSyscall(name: string, spy: (...args: any[]) => any): Re
         blocks: [{
             type: name,
             label: name,
-            shape: 'stack',
+            shape: 'zeroArgBlock',
             category: 'extras',
             color: '#ccc',
             defaultInputs: {},

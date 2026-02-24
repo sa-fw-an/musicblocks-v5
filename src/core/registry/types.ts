@@ -19,7 +19,37 @@ export interface BlockCompileCtx {
 
 // ─── Per-block definition ─────────────────────────────────────────────────────
 
-export type BlockShape = 'stack' | 'hat' | 'clamp' | 'value' | 'boolean';
+// Maps to docs Part 4 protoblock → SVG section
+export type ProtoblockShape =
+    | 'zeroArgBlock'
+    | 'oneArgBlock'
+    | 'twoArgBlock'
+    | 'threeArgBlock'
+    | 'basicBlockNoFlow'
+    | 'basicBlockCollapsed'
+    | 'stackClampZeroArgBlock'
+    | 'stackClampOneArgBlock'
+    | 'flowClampBlock'
+    | 'flowClampZeroArgBlock'
+    | 'flowClampOneArgBlock'
+    | 'flowClampTwoArgBlock'
+    | 'flowClampThreeArgBlock'
+    | 'flowClampBooleanArgBlock'
+    | 'doubleFlowClampBooleanArgBlock'
+    | 'argFlowClampBlock'
+    | 'argClampBlock'
+    | 'argClampOneArgBlock'
+    | 'untilClampBlock'
+    | 'valueBlock'
+    | 'mediaBlock'
+    | 'booleanZeroArgBlock'
+    | 'booleanOneBooleanArgBlock'
+    | 'booleanTwoBooleanArgBlock'
+    | 'booleanTwoArgBlock'
+    | 'statusBlock';
+
+/** Alias for backward compatibility during migration */
+export type BlockShape = ProtoblockShape;
 
 export interface ArgSpec {
     name: string;
@@ -34,6 +64,8 @@ export interface BlockUIProps {
     isBreakpoint: boolean;
     isOver: boolean;
     isBodyOver?: boolean;
+    /** For clamp blocks: nested body content (rendered by BlockTree) */
+    bodySlot?: React.ReactNode;
 }
 
 export interface BlockDefinition {

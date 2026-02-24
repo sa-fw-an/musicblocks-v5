@@ -11,7 +11,7 @@ const NOTES = ['C4','D4','E4','F4','G4','A4','B4','C5','D5','E5'];
 const PlayNoteUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Play Note" argRows={2} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="twoArgBlock" color={COLOR} label="Play Note" argRows={2} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="pitch" type="select" label="pitch" options={NOTES} width={70} />
         <BlockInput nodeId={node.id} field="beats" type="text"   label="beats" width={60} />
     </BlockShape>
@@ -20,7 +20,7 @@ const PlayNoteUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean
 export const PlayNoteBlock: BlockDefinition = {
     type: 'play_note',
     label: 'Play Note',
-    shape: 'stack',
+    shape: 'twoArgBlock',
     category: 'rhythm',
     color: COLOR,
     args: [

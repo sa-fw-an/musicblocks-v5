@@ -9,7 +9,7 @@ const COLOR = CATEGORY_COLORS.meter;
 const SetTempoUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Set Tempo" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="oneArgBlock" color={COLOR} label="Set Tempo" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="bpm" type="number" label="bpm" min={1} max={400} width={65} />
     </BlockShape>
 );
@@ -17,7 +17,7 @@ const SetTempoUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean
 export const SetTempoBlock: BlockDefinition = {
     type: 'set_tempo',
     label: 'Set Tempo',
-    shape: 'stack',
+    shape: 'oneArgBlock',
     category: 'meter',
     color: COLOR,
     args: [{ name: 'bpm', type: 'number', default: 120 }],

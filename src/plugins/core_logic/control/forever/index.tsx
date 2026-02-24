@@ -5,16 +5,16 @@ import { CATEGORY_COLORS } from '@/core/ui/constants';
 
 const COLOR = CATEGORY_COLORS.flow;
 
-const ForeverUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean; isBodyOver?: boolean }> = ({
-    isActive, isBreakpoint, isOver, isBodyOver,
+const ForeverUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean; isBodyOver?: boolean; bodySlot?: React.ReactNode }> = ({
+    isActive, isBreakpoint, isOver, isBodyOver, bodySlot,
 }) => (
-    <BlockShape shape="clamp" color={COLOR} label="Forever" isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} isBodyOver={isBodyOver} />
+    <BlockShape shape="flowClampZeroArgBlock" color={COLOR} label="Forever" isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} isBodyOver={isBodyOver} bodySlot={bodySlot} />
 );
 
 export const ForeverBlock: BlockDefinition = {
     type: 'forever',
     label: 'Forever',
-    shape: 'clamp',
+    shape: 'flowClampZeroArgBlock',
     category: 'flow',
     color: COLOR,
     defaultInputs: {},

@@ -5,16 +5,16 @@ import { CATEGORY_COLORS } from '@/core/ui/constants';
 
 const COLOR = CATEGORY_COLORS.program;
 
-const StartUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
-    isActive, isBreakpoint, isOver,
+const StartUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean; bodySlot?: React.ReactNode }> = ({
+    isActive, isBreakpoint, isOver, bodySlot,
 }) => (
-    <BlockShape shape="hat" color={COLOR} label="Start" isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} />
+    <BlockShape shape="stackClampZeroArgBlock" color={COLOR} label="Start" isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} bodySlot={bodySlot} />
 );
 
 export const StartBlock: BlockDefinition = {
     type: 'start',
     label: 'Start',
-    shape: 'hat',
+    shape: 'stackClampZeroArgBlock',
     category: 'program',
     color: COLOR,
     defaultInputs: {},

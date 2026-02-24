@@ -9,13 +9,13 @@ const COLOR = CATEGORY_COLORS.boxes;
 const BoxUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="value" color={COLOR} label={node.inputs.varName || 'box'} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} width={100} />
+    <BlockShape shape="valueBlock" color={COLOR} label={node.inputs.varName || 'box'} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver} width={100} />
 );
 
 export const BoxBlock: BlockDefinition = {
     type: 'box',
     label: 'Box',
-    shape: 'value',
+    shape: 'valueBlock',
     category: 'boxes',
     color: COLOR,
     args: [{ name: 'varName', type: 'string', default: 'myVar' }],

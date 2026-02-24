@@ -9,7 +9,7 @@ const COLOR = CATEGORY_COLORS.rhythm;
 const RestUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Rest" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="oneArgBlock" color={COLOR} label="Rest" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="beats" type="text" label="beats" width={60} />
     </BlockShape>
 );
@@ -17,7 +17,7 @@ const RestUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; is
 export const RestBlock: BlockDefinition = {
     type: 'rest',
     label: 'Rest',
-    shape: 'stack',
+    shape: 'oneArgBlock',
     category: 'rhythm',
     color: COLOR,
     args: [{ name: 'beats', type: 'number', default: 1 }],

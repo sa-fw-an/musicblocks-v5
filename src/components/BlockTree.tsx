@@ -2,6 +2,7 @@ import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { globalRegistry } from '@/main-registry';
+import { isClampShape } from '@/core/ui/blockPaths';
 
 interface BlockTreeProps {
     id: string;
@@ -44,13 +45,13 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
         left: isRoot && !isOverlay ? `${node.x ?? 0}px` : undefined,
         top: isRoot && !isOverlay ? `${node.y ?? 0}px` : undefined,
         opacity: isDragging ? 0.3 : 1,
-        display: 'inline-block',
+        display: 'block',
     };
 
     // If the block type is registered, use its component
     if (def) {
         const Comp = def.component;
-        const isClamp = def.shape === 'clamp';
+        const isClamp = isClampShape(def.shape);
 
         const handleBreakpointToggle = (e: React.MouseEvent) => {
             e.preventDefault();
@@ -73,17 +74,17 @@ export const BlockTree: React.FC<BlockTreeProps> = ({ id, isRoot = false, isOver
                         isBreakpoint={isBreakpoint ?? false}
                         isOver={isOver}
                         isBodyOver={isBodyOver}
+                        bodySlot={
+                            isClamp ? (
+                                <div ref={setBodyDropRef} style={{ minHeight: 40 }}>
+                                    {node.body && (
+                                        <BlockTree id={node.body} isRoot={false} isOverlay={isOverlay} depth={depth + 1} />
+                                    )}
+                                </div>
+                            ) : undefined
+                        }
                     />
                 </div>
-
-                {/* Clamp body drop zone for blocks with a body slot */}
-                {isClamp && (
-                    <div ref={setBodyDropRef} style={{ minHeight: 40 }}>
-                        {node.body && (
-                            <BlockTree id={node.body} isRoot={false} isOverlay={isOverlay} depth={depth + 1} />
-                        )}
-                    </div>
-                )}
 
                 {/* Next block in chain */}
                 {node.next && (

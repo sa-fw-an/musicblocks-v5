@@ -9,7 +9,7 @@ const COLOR = CATEGORY_COLORS.extras;
 const PrintUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; isOver: boolean }> = ({
     node, isActive, isBreakpoint, isOver,
 }) => (
-    <BlockShape shape="stack" color={COLOR} label="Print" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
+    <BlockShape shape="oneArgBlock" color={COLOR} label="Print" argRows={1} isActive={isActive} isBreakpoint={isBreakpoint} isOver={isOver}>
         <BlockInput nodeId={node.id} field="message" type="text" label="msg" width={110} />
     </BlockShape>
 );
@@ -17,7 +17,7 @@ const PrintUI: React.FC<{ node: any; isActive: boolean; isBreakpoint: boolean; i
 export const PrintBlock: BlockDefinition = {
     type: 'print',
     label: 'Print',
-    shape: 'stack',
+    shape: 'oneArgBlock',
     category: 'extras',
     color: COLOR,
     args: [{ name: 'message', type: 'string', default: 'Hello World' }],
