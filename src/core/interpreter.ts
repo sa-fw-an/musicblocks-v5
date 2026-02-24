@@ -1,6 +1,6 @@
 import type { IRProgram } from '@/core/ir';
 import { ExecutionContext } from '@/core/memory';
-import { PluginRegistry } from '@/core/plugin-registry';
+import type { Registry } from '@/core/registry/index';
 
 export type ExecutionStatus =
     | { status: 'COMPLETED_SLICE' }
@@ -10,10 +10,10 @@ export type ExecutionStatus =
 
 export class Interpreter {
     private program: IRProgram;
-    private registry: PluginRegistry;
+    private registry: Registry;
     private breakpoints: Set<string> = new Set();
 
-    constructor(program: IRProgram, registry: PluginRegistry) {
+    constructor(program: IRProgram, registry: Registry) {
         this.program = program;
         this.registry = registry;
     }
@@ -130,7 +130,7 @@ export class Interpreter {
                         const status = handler(args, context, currentTimeMs);
                         if (status) return status;
                     } else {
-                        console.warn(`Syscall ${syscallName} not found by interpreter`);
+                    console.warn(`Syscall '${syscallName}' not found in registry`);
                     }
                     break;
                 }

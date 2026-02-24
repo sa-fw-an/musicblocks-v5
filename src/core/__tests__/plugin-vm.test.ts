@@ -2,28 +2,34 @@ import { describe, it, expect } from 'vitest';
 import { Scheduler } from '@/core/scheduler';
 import { Interpreter } from '@/core/interpreter';
 import { Compiler } from '@/core/compiler';
-import { PluginRegistry } from '@/core/plugin-registry';
+import { Registry } from '@/core/registry/index';
+import { CoreLogicPlugin } from '@/plugins/core_logic/index';
 import { MusicBlocksPlugin } from '@/plugins/musicblocks';
 import type { BlockNode } from '@/core/ast';
 
 describe('Domain-Agnostic VM Architecture', () => {
-    it('executes generic AST with domain-specific plugins correctly', () => {
+    it('executes generic AST with domain-specific plugins correctly', async () => {
         // Setup global mock for the syscall
         (globalThis as any).__mockAudioEvents = [];
 
         // Mock Tone.js state and functions for headless Node environment
+        const MockSynth = { triggerAttackRelease() { } };
         const MockTone = {
             context: { state: 'suspended' },
             start: () => { MockTone.context.state = 'running'; },
-            PolySynth: class { toDestination() { return this; } triggerAttackRelease() { } },
+            PolySynth: class { toDestination() { return MockSynth; } },
             Synth: {},
             now: () => 0
         };
         (globalThis as any).__mockTone = MockTone;
 
         // 1. Setup Architecture
-        const registry = new PluginRegistry();
-        registry.register(MusicBlocksPlugin);
+        const registry = new Registry();
+        registry.registerPlugin(CoreLogicPlugin);
+        registry.registerPlugin(MusicBlocksPlugin);
+
+        // Initialize all plugins (sets up synth via ensureTone)
+        await registry.initializeAll();
 
         const compiler = new Compiler(registry);
 
@@ -99,7 +105,8 @@ describe('Domain-Agnostic VM Architecture', () => {
     });
 
     it('executes dynamic variables and math operations correctly', () => {
-        const registry = new PluginRegistry();
+        const registry = new Registry();
+        registry.registerPlugin(CoreLogicPlugin);
         const compiler = new Compiler(registry);
 
         const startNode: BlockNode = {

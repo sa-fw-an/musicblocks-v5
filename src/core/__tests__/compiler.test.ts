@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BasicBlockManager, Compiler } from '@/core/compiler';
-import { PluginRegistry } from '@/core/plugin-registry';
+import { Registry } from '@/core/registry/index';
 import type { BlockNode } from '@/core/ast';
 
 describe('Compiler', () => {
@@ -15,7 +15,7 @@ describe('Compiler', () => {
     });
 
     it('compiles an empty thread', () => {
-        const registry = new PluginRegistry();
+        const registry = new Registry();
         const compiler = new Compiler(registry);
 
         const startNode: BlockNode = {
@@ -33,7 +33,7 @@ describe('Compiler', () => {
     });
 
     it('compiles nested loops without crossing logic', () => {
-        const registry = new PluginRegistry();
+        const registry = new Registry();
         const compiler = new Compiler(registry);
 
         const startNode: BlockNode = { id: 's1', type: 'start', inputs: {}, next: 'r1' };
@@ -63,7 +63,7 @@ describe('Compiler', () => {
     });
 
     it('handles empty blocks gracefully', () => {
-        const registry = new PluginRegistry();
+        const registry = new Registry();
         const compiler = new Compiler(registry);
 
         const startNode: BlockNode = { id: 's1', type: 'start', inputs: {}, next: 'r1' };
@@ -80,7 +80,7 @@ describe('Compiler', () => {
     });
 
     it('compiles sequential math operations correctly', () => {
-        const registry = new PluginRegistry();
+        const registry = new Registry();
         const compiler = new Compiler(registry);
 
         const startNode: BlockNode = { id: 's1', type: 'start', inputs: {}, next: 'v1' };
@@ -119,7 +119,7 @@ describe('Compiler', () => {
     });
 
     it('Correctly wires jump pointers for nested REPEAT blocks', () => {
-        const registry = new PluginRegistry();
+        const registry = new Registry();
         const compiler = new Compiler(registry);
 
         // AST representation:
@@ -148,11 +148,6 @@ describe('Compiler', () => {
         const program = compiler.compile([startNode], blocks);
         const func = program.functions['thread_start'];
 
-        // Let's trace the logic.
-        // innerNote (N2) is inside innerRepeat (R2). After N2, it should jump to R2's increment block, which then jumps to R2's condition block.
-        // Once R2 finishes (exit/after block), it is the end of R1's body.
-        // Therefore, R2's exit/after block should jump to R1's increment block.
-
         // R1 should produce specific loop blocks
         const r1Condition = Object.values(func.blocks).find(b => b.label.startsWith('loop_cond_R1'));
         const r1Increment = Object.values(func.blocks).find(b => b.label.startsWith('loop_increment_R1'));
@@ -164,17 +159,12 @@ describe('Compiler', () => {
         const r2Condition = Object.values(func.blocks).find(b => b.label.startsWith('loop_cond_R2'));
         const r2After = Object.values(func.blocks).find(b => b.label.startsWith('after_loop_R2'))
             || Object.values(func.blocks).find(b => b.label.startsWith('loop_end_R2'))
-            || r1Increment; // Under recursive descent, if R2 has no next, it jumps to its parent's nextLabel (r1Increment) directly natively without an after_loop block!
+            || r1Increment;
 
         expect(r2Condition).toBeDefined();
         expect(r2After).toBeDefined();
 
-        // The critical check: Does R2's condition block exit back up to R1's increment?
-        // Under recursive descent, R2's exitLabel IS R1's increment block, so the compare_jump
-        // will use it as the fail-condition target (operand[4]).
-
         const r2ExitTarget = r2Condition?.instructions.find(i => i.opcode === 'compare_jump')?.operands[4];
-
         expect(r2ExitTarget).toBe(r1Increment?.label);
     });
 });

@@ -3,15 +3,16 @@ import { useWorkspaceStore } from '@/store/workspaceStore';
 import { Compiler } from '@/core/compiler';
 import { Interpreter } from '@/core/interpreter';
 import { Scheduler } from '@/core/scheduler';
-import { PluginRegistry } from '@/core/plugin-registry';
-import { MusicBlocksPlugin } from '@/plugins/musicblocks';
+import { Registry } from '@/core/registry/index';
+import { CoreLogicPlugin }   from '@/plugins/core_logic/index';
+import { MusicBlocksPlugin } from '@/plugins/musicblocks/index';
 import type { BlockNode, BlockId } from '@/core/ast';
 
 export function useVM() {
     const animationFrameRef = useRef<number | null>(null);
     const lastTimeRef = useRef<number>(0);
     const schedulerRef = useRef<Scheduler | null>(null);
-    const registryRef = useRef<PluginRegistry | null>(null);
+    const registryRef = useRef<Registry | null>(null);
 
     const play = useCallback(async (rootBlockIds: BlockId[]) => {
         // Stop any existing loop
@@ -42,8 +43,9 @@ export function useVM() {
         }
 
         // Initialize VM infrastructure
-        const registry = new PluginRegistry();
-        registry.register(MusicBlocksPlugin);
+        const registry = new Registry();
+        registry.registerPlugin(CoreLogicPlugin);
+        registry.registerPlugin(MusicBlocksPlugin);
         await registry.initializeAll();
 
         const compiler = new Compiler(registry);

@@ -62,4 +62,92 @@ describe('WorkspaceStore AST Operations', () => {
         // b1 should still exist, but without its next connection (already pointing to b2 though it's technically orphaned)
         expect(state.blocks['b1']).toBeDefined();
     });
+
+    it('connectBlocks with body attaches child to clamp body slot', () => {
+        useWorkspaceStore.getState().addBlock({ id: 'r1', type: 'repeat', inputs: { iterations: 2 } } as BlockNode);
+        useWorkspaceStore.getState().addBlock({ id: 'n1', type: 'play_note', inputs: { pitch: 'C4', beats: 1 } } as BlockNode);
+
+        useWorkspaceStore.getState().connectBlocks('r1', 'n1', 'body');
+
+        const state = useWorkspaceStore.getState();
+        expect(state.blocks['r1'].body).toBe('n1');
+        expect(state.blocks['n1'].body).toBeUndefined();
+        expect(state.blocks['n1'].next).toBeUndefined();
+        expect(state.rootBlocks).not.toContain('n1');
+    });
+
+    it('connectBlocks with next attaches child to next slot', () => {
+        useWorkspaceStore.getState().addBlock({ id: 's1', type: 'start', inputs: {} } as BlockNode);
+        useWorkspaceStore.getState().addBlock({ id: 'p1', type: 'play_note', inputs: {} } as BlockNode);
+
+        useWorkspaceStore.getState().connectBlocks('s1', 'p1', 'next');
+
+        const state = useWorkspaceStore.getState();
+        expect(state.blocks['s1'].next).toBe('p1');
+        expect(state.blocks['s1'].body).toBeUndefined();
+        expect(state.rootBlocks).not.toContain('p1');
+    });
+
+    it('connectBlocks body rejects when parent already has body', () => {
+        useWorkspaceStore.getState().addBlock({ id: 'r1', type: 'repeat', inputs: {} } as BlockNode);
+        useWorkspaceStore.getState().addBlock({ id: 'n1', type: 'play_note', inputs: {} } as BlockNode);
+        useWorkspaceStore.getState().addBlock({ id: 'n2', type: 'play_note', inputs: {} } as BlockNode);
+
+        useWorkspaceStore.getState().connectBlocks('r1', 'n1', 'body');
+        useWorkspaceStore.getState().connectBlocks('r1', 'n2', 'body');
+
+        const state = useWorkspaceStore.getState();
+        expect(state.blocks['r1'].body).toBe('n1');
+        expect(state.rootBlocks).toContain('n2');
+    });
+
+    it('toggleBreakpoint adds and removes block from breakpoint set', () => {
+        useWorkspaceStore.getState().addBlock({ id: 'b1', type: 'play_note', inputs: {} } as BlockNode);
+
+        expect(useWorkspaceStore.getState().breakpointBlockIds.has('b1')).toBe(false);
+
+        useWorkspaceStore.getState().toggleBreakpoint('b1');
+        expect(useWorkspaceStore.getState().breakpointBlockIds.has('b1')).toBe(true);
+
+        useWorkspaceStore.getState().toggleBreakpoint('b1');
+        expect(useWorkspaceStore.getState().breakpointBlockIds.has('b1')).toBe(false);
+    });
+
+    it('toggleBreakpoint on non-existent block does not throw', () => {
+        expect(() => useWorkspaceStore.getState().toggleBreakpoint('nonexistent')).not.toThrow();
+        expect(useWorkspaceStore.getState().breakpointBlockIds.has('nonexistent')).toBe(true);
+    });
+
+    it('detachBlock removes block from parent body and makes it root', () => {
+        useWorkspaceStore.getState().addBlock({ id: 'r1', type: 'repeat', inputs: {} } as BlockNode);
+        useWorkspaceStore.getState().addBlock({ id: 'n1', type: 'play_note', inputs: {} } as BlockNode);
+        useWorkspaceStore.getState().connectBlocks('r1', 'n1', 'body');
+
+        expect(useWorkspaceStore.getState().blocks['r1'].body).toBe('n1');
+        expect(useWorkspaceStore.getState().rootBlocks).not.toContain('n1');
+
+        useWorkspaceStore.getState().detachBlock('n1');
+
+        const state = useWorkspaceStore.getState();
+        expect(state.blocks['r1'].body).toBeUndefined();
+        expect(state.rootBlocks).toContain('n1');
+    });
+
+    it('addBlock adds block to rootBlocks', () => {
+        useWorkspaceStore.getState().clearWorkspace();
+        useWorkspaceStore.getState().addBlock({ id: 'b1', type: 'start', inputs: {} } as BlockNode);
+
+        const state = useWorkspaceStore.getState();
+        expect(state.blocks['b1']).toBeDefined();
+        expect(state.rootBlocks).toContain('b1');
+    });
+
+    it('clearWorkspace resets blocks and rootBlocks', () => {
+        useWorkspaceStore.getState().addBlock({ id: 'b1', type: 'start', inputs: {} } as BlockNode);
+        useWorkspaceStore.getState().clearWorkspace();
+
+        const state = useWorkspaceStore.getState();
+        expect(state.blocks).toEqual({});
+        expect(state.rootBlocks).toEqual([]);
+    });
 });

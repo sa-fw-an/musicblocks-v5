@@ -1,6 +1,7 @@
 import type { BlockNode, BlockId } from '@/core/ast';
 import type { IRProgram, IRFunction, IRBasicBlock } from '@/core/ir';
-import { PluginRegistry } from '@/core/plugin-registry';
+import type { Registry } from '@/core/registry/index';
+import type { BlockCompileCtx } from '@/core/registry/types';
 
 export class BasicBlockManager {
     private counter = 0;
@@ -14,9 +15,9 @@ export class BasicBlockManager {
 }
 
 export class Compiler {
-    private registry: PluginRegistry;
+    private registry: Registry;
 
-    constructor(registry: PluginRegistry) {
+    constructor(registry: Registry) {
         this.registry = registry;
     }
 
@@ -43,7 +44,6 @@ export class Compiler {
 
         const threadEndBlock = bbm.createBlock('thread_end');
         irFunc.blocks[threadEndBlock.label] = threadEndBlock;
-        // The block is empty; execution naturally falls off and halts.
 
         const entryLabel = this.compileChain(startNode.id, threadEndBlock.label, blocks, bbm, irFunc);
         irFunc.entryBlockId = entryLabel;
@@ -51,80 +51,105 @@ export class Compiler {
         return irFunc;
     }
 
-    private compileChain(nodeId: string | undefined, exitLabel: string, blocks: Record<BlockId, BlockNode>, bbm: BasicBlockManager, irFunc: IRFunction): string {
+    private compileChain(
+        nodeId: string | undefined,
+        exitLabel: string,
+        blocks: Record<BlockId, BlockNode>,
+        bbm: BasicBlockManager,
+        irFunc: IRFunction
+    ): string {
         if (!nodeId || !blocks[nodeId]) {
             return exitLabel;
         }
 
         const current = blocks[nodeId];
-        const nextLabel = this.compileChain(current.next, exitLabel, blocks, bbm, irFunc);
 
+        // Closure that plugin compile() functions call for sub-chains
+        const compileChainFn = (id: string | undefined, exit: string) =>
+            this.compileChain(id, exit, blocks, bbm, irFunc);
+
+        const nextLabel = compileChainFn(current.next, exitLabel);
+
+        // Delegate to registered block definition first
+        const def = this.registry.getBlock(current.type);
+        if (def?.compile) {
+            const ctx: BlockCompileCtx = {
+                exitLabel: nextLabel,
+                bbm,
+                irBlocks: irFunc.blocks,
+                compileChain: compileChainFn,
+                blocks,
+            };
+            return def.compile(current, ctx);
+        }
+
+        // Fallback built-ins (keeps existing tests passing without needing plugin registration)
         if (current.type === 'repeat') {
-            const iterations = current.inputs.iterations || 2;
-            const loopId = current.id;
-            const iterVar = `_loop_iter_${loopId}`;
+            return this.compileRepeat(current, nextLabel, blocks, bbm, irFunc, compileChainFn);
+        }
 
-            const initBlock = bbm.createBlock(`loop_init_${loopId}`);
-            const conditionBlock = bbm.createBlock(`loop_cond_${loopId}`);
-            const incrementBlock = bbm.createBlock(`loop_increment_${loopId}`);
+        const block = bbm.createBlock(`block_${current.type}_${current.id}`);
+        irFunc.blocks[block.label] = block;
 
-            irFunc.blocks[initBlock.label] = initBlock;
-            irFunc.blocks[conditionBlock.label] = conditionBlock;
-            irFunc.blocks[incrementBlock.label] = incrementBlock;
-
-            // Increment body
-            incrementBlock.instructions.push({ opcode: 'math_add', operands: [iterVar, iterVar, 1], astNodeId: current.id });
-            incrementBlock.instructions.push({ opcode: 'jump', operands: [conditionBlock.label] });
-
-            // Body chain - exit to incrementBlock
-            const bodyStartLabel = this.compileChain(current.body, incrementBlock.label, blocks, bbm, irFunc);
-
-            // Condition block
-            conditionBlock.instructions.push({
-                opcode: 'compare_jump',
-                operands: ['<', iterVar, iterations, bodyStartLabel, nextLabel],
+        if (current.type === 'set_var') {
+            block.instructions.push({
+                opcode: 'store',
+                operands: [current.inputs.varName, current.inputs.value],
                 astNodeId: current.id
             });
-
-            // Init block
-            initBlock.instructions.push({ opcode: 'sym_declare', operands: [iterVar, 0], astNodeId: current.id });
-            initBlock.instructions.push({ opcode: 'jump', operands: [conditionBlock.label], astNodeId: current.id });
-
-            return initBlock.label;
-        } else {
-            // Standard blocks & Custom blocks
-            const block = bbm.createBlock(`block_${current.type}_${current.id}`);
-            irFunc.blocks[block.label] = block;
-
-            if (current.type === 'set_var') {
-                block.instructions.push({
-                    opcode: 'store',
-                    operands: [current.inputs.varName, current.inputs.value],
-                    astNodeId: current.id
-                });
-            } else if (current.type === 'random') {
-                block.instructions.push({
-                    opcode: 'math_random',
-                    operands: [current.inputs.varName, current.inputs.min, current.inputs.max],
-                    astNodeId: current.id
-                });
-            } else if (current.type === 'change_var') {
-                block.instructions.push({
-                    opcode: 'math_add',
-                    operands: [current.inputs.varName, current.inputs.amount],
-                    astNodeId: current.id
-                });
-            } else {
-                const customCompiler = this.registry.getBlockCompiler(current.type);
-                if (customCompiler) {
-                    customCompiler(current, block.instructions, { bbm, blocks: irFunc.blocks });
-                }
-            }
-
-            // Always jump to the next label (which could be the next block or the exitLabel of the parent)
-            block.instructions.push({ opcode: 'jump', operands: [nextLabel] });
-
-            return block.label;
+        } else if (current.type === 'random') {
+            block.instructions.push({
+                opcode: 'math_random',
+                operands: [current.inputs.varName, current.inputs.min, current.inputs.max],
+                astNodeId: current.id
+            });
+        } else if (current.type === 'change_var') {
+            block.instructions.push({
+                opcode: 'math_add',
+                operands: [current.inputs.varName, current.inputs.amount],
+                astNodeId: current.id
+            });
         }
+        // start / unknown blocks: emit no instruction, just jump through
+
+        block.instructions.push({ opcode: 'jump', operands: [nextLabel] });
+        return block.label;
+    }
+
+    private compileRepeat(
+        current: BlockNode,
+        nextLabel: string,
+        _blocks: Record<BlockId, BlockNode>,
+        bbm: BasicBlockManager,
+        irFunc: IRFunction,
+        compileChainFn: (id: string | undefined, exit: string) => string
+    ): string {
+        const iterations = current.inputs.iterations || 2;
+        const loopId = current.id;
+        const iterVar = `_loop_iter_${loopId}`;
+
+        const initBlock      = bbm.createBlock(`loop_init_${loopId}`);
+        const conditionBlock = bbm.createBlock(`loop_cond_${loopId}`);
+        const incrementBlock = bbm.createBlock(`loop_increment_${loopId}`);
+
+        irFunc.blocks[initBlock.label]      = initBlock;
+        irFunc.blocks[conditionBlock.label] = conditionBlock;
+        irFunc.blocks[incrementBlock.label] = incrementBlock;
+
+        incrementBlock.instructions.push({ opcode: 'math_add', operands: [iterVar, iterVar, 1], astNodeId: current.id });
+        incrementBlock.instructions.push({ opcode: 'jump', operands: [conditionBlock.label] });
+
+        const bodyStartLabel = compileChainFn(current.body, incrementBlock.label);
+
+        conditionBlock.instructions.push({
+            opcode: 'compare_jump',
+            operands: ['<', iterVar, iterations, bodyStartLabel, nextLabel],
+            astNodeId: current.id
+        });
+
+        initBlock.instructions.push({ opcode: 'sym_declare', operands: [iterVar, 0], astNodeId: current.id });
+        initBlock.instructions.push({ opcode: 'jump', operands: [conditionBlock.label], astNodeId: current.id });
+
+        return initBlock.label;
     }
 }

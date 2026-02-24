@@ -1,19 +1,38 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Interpreter } from '@/core/interpreter';
 import { ExecutionContext } from '@/core/memory';
-import { PluginRegistry } from '@/core/plugin-registry';
+import { Registry } from '@/core/registry/index';
 import type { IRProgram } from '@/core/ir';
+
+/** Helper: build a Registry with a single no-op block whose execute is the given spy */
+function makeRegistryWithSyscall(name: string, spy: (...args: any[]) => any): Registry {
+    const reg = new Registry();
+    reg.registerPlugin({
+        name: 'test',
+        blocks: [{
+            type: name,
+            label: name,
+            shape: 'stack',
+            category: 'extras',
+            color: '#ccc',
+            defaultInputs: {},
+            component: () => null as any,
+            compile: (_node, ctx) => {
+                const b = ctx.bbm.createBlock(`block_${name}`);
+                ctx.irBlocks[b.label] = b;
+                b.instructions.push({ opcode: 'jump', operands: [ctx.exitLabel] });
+                return b.label;
+            },
+            execute: spy,
+        }],
+    });
+    return reg;
+}
 
 describe('Interpreter', () => {
     it('executes basic IR blocks incrementally', () => {
-        const mockRegistry = new PluginRegistry();
         const syscallSpy = vi.fn().mockReturnValue({ status: 'YIELD_UNTIL_TIME', resumeTimeMs: 1000 });
-
-        mockRegistry.register({
-            name: 'test',
-            blockCompilers: {},
-            syscalls: { 'testSyscall': syscallSpy }
-        });
+        const mockRegistry = makeRegistryWithSyscall('testSyscall', syscallSpy);
 
         const program: IRProgram = {
             functions: {
@@ -51,7 +70,7 @@ describe('Interpreter', () => {
     });
 
     it('handles compare_jump branching', () => {
-        const mockRegistry = new PluginRegistry();
+        const mockRegistry = new Registry();
         const program: IRProgram = {
             functions: {
                 'main': {
@@ -80,7 +99,7 @@ describe('Interpreter', () => {
     });
 
     it('resolves dynamic operands starting with $', () => {
-        const mockRegistry = new PluginRegistry();
+        const mockRegistry = new Registry();
         const program: IRProgram = {
             functions: {
                 'main': {
@@ -109,7 +128,7 @@ describe('Interpreter', () => {
     });
 
     it('handles the new math_add opcode with 2 operands', () => {
-        const mockRegistry = new PluginRegistry();
+        const mockRegistry = new Registry();
         const program: IRProgram = {
             functions: {
                 'main': {
@@ -139,7 +158,7 @@ describe('Interpreter', () => {
     });
 
     it('math_add works with negative, float, and zero numbers correctly', () => {
-        const mockRegistry = new PluginRegistry();
+        const mockRegistry = new Registry();
         const program: IRProgram = {
             functions: {
                 'main': {
@@ -168,14 +187,8 @@ describe('Interpreter', () => {
     });
 
     it('sys_call yielding does not advance the instruction pointer so it resumes properly', () => {
-        const mockRegistry = new PluginRegistry();
         const syscallSpy = vi.fn().mockReturnValue({ status: 'YIELD_UNTIL_TIME', resumeTimeMs: 1000 });
-
-        mockRegistry.register({
-            name: 'test',
-            blockCompilers: {},
-            syscalls: { 'testYield': syscallSpy }
-        });
+        const mockRegistry = makeRegistryWithSyscall('testYield', syscallSpy);
 
         const program: IRProgram = {
             functions: {
